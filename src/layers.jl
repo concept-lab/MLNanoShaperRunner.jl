@@ -9,8 +9,24 @@ using Distances
 using ChainRulesCore
 
 struct Batch{T<:AbstractArray}
-	field::Vector{T}
+    field::Vector{T}
 end
+
+struct ModelInput{T<:Number}
+    point::Point3{T}
+    atoms::StructVector{Sphere{T}} #Set
+end
+
+struct PreprocessData{T<:AbstractArray}
+    dot::T
+    r_1::T
+    r_2::T
+    d_1::T
+    d_2::T
+end
+PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
+    getindex.(x, f)
+end...)
 
 @concrete struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
     prepross
@@ -20,26 +36,24 @@ function (f::DeepSet)(set::AbstractVector{<:AbstractArray}, ps, st)
     trace("input size", length(set))
     sum(set) do arg
         Lux.apply(f.prepross, arg, ps, st) |> first
-	end / sqrt(length(set)), st
+    end / sqrt(length(set)), st
 end
-function (f::DeepSet)(arg::StructArray, ps, st)
-    trace("input size", length(arg))
-	sum(Lux.apply(f.prepross, arg, ps, st) |> first) / sqrt(length(arg)), st
-end
-
-struct ModelInput{T <: Number}
-    point::Point3{T}
-    atoms::StructVector{Sphere{T}} #Set
+function (f::DeepSet)(arg::PreprocessData, ps, st)
+    trace("input size", length(arg.dot))
+    sum(Lux.apply(f.prepross, arg, ps, st) |> first) / sqrt(length(arg.dot)), st
 end
 
-struct PreprocessData{T <: Number}
-    dot::T
-    r_1::T
-    r_2::T
-    d_1::T
-    d_2::T
+function preprocessing((; point, atoms)::ModelInput)
+    x = map(Iterators.product(atoms, atoms)) do (atom1, atom2)::Tuple{Sphere,Sphere}
+            d_1 = euclidean(point, atom1.center)
+            d_2 = euclidean(point, atom2.center)
+            dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
+            (dot, atom1.r, atom2.r, d_1, d_2)
+        end |> vec |> trace("preprossed data") |> PreprocessData
+    PreprocessData(map(propertynames(x)) do f
+        reshape(getproperty(x, f), 1, 1, :)
+	end...)
 end
-
 """
 Encoding(n_dotₛ,n_Dₛ,cut_distance)
 
@@ -57,30 +71,30 @@ A lux layer which embed angular and radial `PreprocessData` into a feature vecto
 x_{ij} = (\\frac{1}{2} + \\frac{dot - dot_{si}}{4})^\\eta * \\exp(-\\zeta ~ ( \\frac{d_1 + d_2}{2} - D_{si} ) ) \\times cut(d_1) \\times cut(d_2) 
 ```
 """
-struct Encoding{T <: Number} <: Lux.AbstractExplicitLayer
+struct Encoding{T<:Number} <: Lux.AbstractExplicitLayer
     n_dotₛ::Int
     n_Dₛ::Int
     cut_distance::T
 end
 
 function Lux.initialparameters(::AbstractRNG, l::Encoding{T}) where {T}
-    (dotsₛ = reshape(collect(range(T(0), T(1); length = l.n_dotₛ)), 1, :),
-        Dₛ = reshape(collect(range(T(0), l.cut_distance; length = l.n_Dₛ)), :, 1),
-        η = ones(T, 1, 1) ./ l.n_dotₛ,
-        ζ = ones(T, 1, 1) ./ l.n_Dₛ)
+    (dotsₛ=reshape(collect(range(T(0), T(1); length=l.n_dotₛ)), 1, :),
+        Dₛ=reshape(collect(range(T(0), l.cut_distance; length=l.n_Dₛ)), :, 1),
+        η=ones(T, 1, 1) ./ l.n_dotₛ,
+        ζ=ones(T, 1, 1) ./ l.n_Dₛ)
 end
 Lux.initialstates(::AbstractRNG, l::Encoding) = (;)
 
 function mergedims(x::AbstractArray, dims::AbstractRange)
-    pre = size(x)[begin:(first(dims) - 1)]
+    pre = size(x)[begin:(first(dims)-1)]
     merged = size(x)[dims]
-    post = size(x)[(last(dims) + 1):end]
+    post = size(x)[(last(dims)+1):end]
     reshape(x, (pre..., prod(merged), post...))
 end
 
-function (l::Encoding{T})(input::StructArray{PreprocessData{T}},
-        (; dotsₛ, η, ζ, Dₛ),
-        st) where {T}
+function (l::Encoding{T})(input::PreprocessData{<:AbstractArray{T}},
+    (; dotsₛ, η, ζ, Dₛ),
+    st) where {T}
     (; dot, d_1, d_2, r_1, r_2) = input |> trace("input")
     encoded = ((2 .+ dot .- tanh.(dotsₛ)) ./ 4) .^ ζ .*
               exp.(-η .* ((d_1 .+ d_2) ./ 2 .- Dₛ) .^ 2) .*
@@ -91,15 +105,6 @@ function (l::Encoding{T})(input::StructArray{PreprocessData{T}},
     end...)
     res |> trace("features"), st
 end
-function (l::Encoding{T})(x::PreprocessData, ps, st) where {T}
-    l(StructVector{PreprocessData{T}}(dot = [x.dot],
-            r_1 = [x.r_1],
-            r_2 = [x.r_2],
-            d_1 = [x.d_1],
-            d_2 = [x.d_2]),
-        ps,
-        st)
-end
 
 function cut(cut_radius::Number, r::Number)
     if r >= cut_radius
@@ -109,21 +114,10 @@ function cut(cut_radius::Number, r::Number)
     end
 end
 
-function preprocessing((; point, atoms)::ModelInput)
-    map(Iterators.product(atoms, atoms)) do (atom1, atom2)::Tuple{Sphere, Sphere}
-        d_1 = euclidean(point, atom1.center)
-        d_2 = euclidean(point, atom2.center)
-        dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
-        PreprocessData(dot, atom1.r, atom2.r, d_1, d_2)
-    end |> vec
-end
 function struct_stack(x::AbstractArray{PreprocessData{T}}) where {T}
-    x = StructVector{PreprocessData{T}}(dot = getfield.(x, :dot),
-        r_1 = getfield.(x, :r_1),
-        r_2 = getfield.(x, :r_2),
-        d_1 = getfield.(x, :d_1),
-        d_2 = getfield.(x, :d_2))
-    reshape(x, 1, 1, size(x)...) |> trace("struct array")
+    f(field) = reshape(getproperty.(x, field), 1, 1, size(x)...)
+    x = StructVector{PreprocessData{T}}(f.(fieldnames(PreprocessData))) |>
+        trace("pre struct array")
 end
 
 function trace(message::String, x)
@@ -141,17 +135,25 @@ function ChainRulesCore.rrule(::typeof(trace), message, x)
     return y, trace_pullback
 end
 
-function ChainRulesCore.rrule(::typeof(Base.getproperty), array::StructArray, field::Symbol)
+function ChainRulesCore.rrule(::typeof(Base.getproperty), array::StructArray{T}, field::Symbol) where {T}
     member = getproperty(array, field)
     function getproperty_pullback(y_hat)
-        NoTangent(),
-        StructArray(; (f => if f == field
-            y_hat
-        else
-			fill(ZeroTangent(),size(y_hat))
-        end
-                       for f in propertynames(array))...)
-        NoTangent()
+        (NoTangent(),
+            StructArray(; (f => if f == field
+                y_hat
+            else
+                zero(getproperty(array, f))
+            end
+                           for f in propertynames(array))...),
+            NoTangent()) |> trace("getproperty_pullback")
     end
     member, getproperty_pullback
+end
+
+function ChainRulesCore.rrule(::Type{StructArray}, fields::Tuple)
+    res = StructArray(fields)
+    function StructArray_pullback(df)
+
+    end
+    res, StructArray_pullback
 end

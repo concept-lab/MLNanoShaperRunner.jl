@@ -1,5 +1,5 @@
 module MLNanoShaperRunner
-export RegionMesh,distance,signed_distance,anakin_model
+export RegionMesh,distance,signed_distance,anakin_model,trace,ModelInput
 
 include("c_interface.jl")
 include("distance_tree.jl")
