@@ -1,5 +1,5 @@
 module MLNanoShaperRunner
 
-greet() = print("Hello World!")
-
+include("c_interface.jl")
+include("layers.jl")
 end # module MLNanoShaperRunner
