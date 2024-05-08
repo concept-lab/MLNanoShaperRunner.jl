@@ -1,6 +1,7 @@
 using NearestNeighbors
 using GeometryBasics
 using LinearAlgebra
+using ChainRulesCore
 using Base.Iterators
 
 struct RegionMesh
