@@ -19,14 +19,14 @@ function RegionMesh(mesh::GeometryBasics.Mesh)
         end
     end
     RegionMesh(triangles,
-        KDTree(coordinates(mesh); reorder=false))
+        KDTree(coordinates(mesh); reorder = false))
 end
 
 distance(x::AbstractVector, y::KDTree) = nn(y, x) |> last
 
 function signed_distance(p::Point3, mesh::RegionMesh)
     id_point, dist = nn(mesh.tree, p)
-    x, y, z = mesh.triangles[OffsetInteger{-1,UInt32}(id_point)]
+    x, y, z = mesh.triangles[OffsetInteger{-1, UInt32}(id_point)]
     # @info "triangle" x y z
 
     direction = hcat(y - x, z - x, p - x) |> det |> sign
@@ -49,9 +49,6 @@ Return the Hausdorff distance betwen the mesh coordinates
 """
 function distance(vec::AbstractVector{<:AbstractVector}, y::KDTree)
     minimum(vec) do x
-	k = distance(x,y)
-        if isinf(k)
-            @warn "isinf" x 
-        end
+        distance(x, y)
     end
 end
