@@ -19,14 +19,14 @@ function RegionMesh(mesh::GeometryBasics.Mesh)
         end
     end
     RegionMesh(triangles,
-        KDTree(coordinates(mesh); reorder = false))
+        KDTree(coordinates(mesh); reorder=false))
 end
 
-distance(x::Point3, y::KDTree) = nn(y, x) |> last
+distance(x::AbstractVector, y::KDTree) = nn(y, x) |> last
 
 function signed_distance(p::Point3, mesh::RegionMesh)
     id_point, dist = nn(mesh.tree, p)
-    x, y, z = mesh.triangles[OffsetInteger{-1, UInt32}(id_point)]
+    x, y, z = mesh.triangles[OffsetInteger{-1,UInt32}(id_point)]
     # @info "triangle" x y z
 
     direction = hcat(y - x, z - x, p - x) |> det |> sign
@@ -42,14 +42,16 @@ function ChainRulesCore.rrule(::typeof(nograd), f, args...; kargs...)
     end
     res, knn_pullback
 end
-
 """
     distance(x::GeometryBasics.Mesh, y::KDTree)
 
 Return the Hausdorff distance betwen the mesh coordinates
 """
-function distance(x::GeometryBasics.Mesh, y::KDTree)
-    maximum(coordinates(x)) do x
-        distance(x, y)
+function distance(vec::AbstractVector{<:AbstractVector}, y::KDTree)
+    minimum(vec) do x
+		k = distance(x,y)
+        if isinf(k)
+            @warn "isinf" x ,y
+        end
     end
 end

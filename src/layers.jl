@@ -44,6 +44,7 @@ function (f::DeepSet)(arg::PreprocessData, ps, st)
 end
 
 function preprocessing((; point, atoms)::ModelInput)
+	prod = Iterators.flatten(Iterators.map(eachindex(atoms)) do i view(atoms,1:i) end)
     x = map(Iterators.product(atoms, atoms)) do (atom1, atom2)::Tuple{Sphere,Sphere}
             d_1 = euclidean(point, atom1.center)
             d_2 = euclidean(point, atom2.center)
