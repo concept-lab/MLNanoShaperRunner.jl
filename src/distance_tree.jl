@@ -49,7 +49,7 @@ Return the Hausdorff distance betwen the mesh coordinates
 """
 function distance(vec::AbstractVector{<:AbstractVector}, y::KDTree)
     minimum(vec) do x
-		k = distance(x,y)
+	k = distance(x,y)
         if isinf(k)
             @warn "isinf" x ,y
         end
