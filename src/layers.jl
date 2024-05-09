@@ -1,4 +1,5 @@
 using Lux
+using Adapt: @adapt_structure
 using ConcreteStructs
 using GeometryBasics
 using Random
@@ -24,6 +25,12 @@ struct PreprocessData{T<:AbstractArray}
     d_1::T
     d_2::T
 end
+
+#enable running on gpu
+Adapt.@adapt_structure Batch
+Adapt.@adapt_structure ModelInput
+Adapt.@adapt_structure PreprocessData
+
 PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
     getindex.(x, f)
 end...)
