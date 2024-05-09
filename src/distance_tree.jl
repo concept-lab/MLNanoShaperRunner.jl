@@ -51,7 +51,7 @@ function distance(vec::AbstractVector{<:AbstractVector}, y::KDTree)
     minimum(vec) do x
 	k = distance(x,y)
         if isinf(k)
-            @warn "isinf" x ,y
+            @warn "isinf" x 
         end
     end
 end
