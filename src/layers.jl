@@ -85,6 +85,8 @@ struct Encoding{T<:Number} <: Lux.AbstractExplicitLayer
     cut_distance::T
 end
 
+Adapt.@adapt_structure Encoding
+
 function Lux.initialparameters(::AbstractRNG, l::Encoding{T}) where {T}
     (dotsₛ=reshape(collect(range(T(0), T(1); length=l.n_dotₛ)), 1, :),
         Dₛ=reshape(collect(range(T(0), l.cut_distance; length=l.n_Dₛ)), :, 1),
