@@ -62,23 +62,23 @@ function (f::DeepSet)(arg::Batch{PreprocessData}, ps, st)
     res = Lux.apply(f.prepross, batched, ps, st) |> first
     res = map(eachindex(lengths)) do i
         sum(res[(lengths[i] + 1):(length[i] + 1)])
-    end 
-    res / sqrt.(length.(getfield.(arg, :dot))) , st
+    end
+    res / sqrt.(length.(getfield.(arg, :dot))), st
 end
 
 function preprocessing((; point, atoms)::ModelInput)
-    prod = Iterators.flatten(Iterators.map(eachindex(atoms)) do i
-		Iterators.map(1:i) do j
-			atoms[i],atoms[j]
-		end
-    end)
-    x = Iterators.map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
+    prod = Iterators.map(eachindex(atoms)) do i
+               Iterators.map(1:i) do j
+                   atoms[i], atoms[j]
+               end
+           end |> Iterators.flatten |> collect |> trace("prod")
+    x = map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
             d_1 = euclidean(point, atom1.center)
             d_2 = euclidean(point, atom2.center)
             dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
             (dot, atom1.r, atom2.r, d_1, d_2)
-        end |> collect |> vec |> trace("preprossed data") |> PreprocessData
-    PreprocessData(map(propertynames(x)) do f
+        end |> vec |> trace("preprossed data")
+    PreprocessData(map(propertynames(PreprocessData)) do f
         reshape(getproperty(x, f), 1, 1, :)
     end...)
 end
