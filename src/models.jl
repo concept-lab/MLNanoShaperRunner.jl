@@ -12,7 +12,16 @@ function anakin()
     chain = Chain(Dense(a * b + 2 => 10,
             elu),
         Dense(10 => 1, elu;
-            init_weight = (args...) -> glorot_uniform(args...; gain = 1 / 25_0000)))
+            init_weight=(args...) -> glorot_uniform(args...; gain=1 / 25_0000)))
     Lux.Chain(preprocessing,
-        DeepSet(Chain(Encoding(a, b, 1.5f0), chain)), tanh_fast)
+        DeepSet(Chain(Encoding(a, b, 3.0f0), chain)), tanh_fast)
+end
+
+function angular_dense()
+    chain = Chain(Dense(5 => 10,
+            elu),
+        Dense(10 => 1, elu;
+            init_weight=(args...) -> glorot_uniform(args...; gain=1 / 25_0000)))
+    Lux.Chain(preprocessing,
+        DeepSet(Chain(x -> symetrise(x; cutoff_radius=3.0f0), chain)), tanh_fast)
 end
