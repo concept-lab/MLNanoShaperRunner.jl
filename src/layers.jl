@@ -8,11 +8,12 @@ using Adapt
 using StructArrays
 using Distances
 using ChainRulesCore
+using Statistics
 
-struct Batch{T <: AbstractArray}
+struct Batch{T}
     field::Vector{T}
 end
-
+(f)(x::Batch) = f.(x.field)
 struct ModelInput{T <: Number}
     point::Point3{T}
     atoms::StructVector{Sphere{T}} #Set
@@ -30,8 +31,9 @@ end
 Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessData
-function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData;cutoff_radius)
-	vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) .* cut.(cutoff_radius,r_1) .*cut.(cutoff_radius,r_2)
+function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData; cutoff_radius)
+    vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) .*
+    cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
 
 PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
@@ -52,12 +54,24 @@ function (f::DeepSet)(arg::PreprocessData, ps, st)
     trace("input size", length(arg.dot))
     sum(Lux.apply(f.prepross, arg, ps, st) |> first) / sqrt(length(arg.dot)), st
 end
+function (f::DeepSet)(arg::Batch{PreprocessData}, ps, st)
+    trace("input size", length(mean(getproperty.(arg, :dot))))
+    lengths = vcat([0], cumsum(last.(size.(arg))))
+    batched = PreprocessData(map(1:5) do i
+        vcat.(getfield.(arg.field, i))
+    end...)
+    res = Lux.apply(f.prepross, batched, ps, st) |> first
+    res = map(eachindex(lengths)) do i
+        sum(res[(lengths[i] + 1):(length[i] + 1)])
+    end 
+    res / sqrt.(length.(getfield.(arg, :dot))) |> Batch, st
+end
 
 function preprocessing((; point, atoms)::ModelInput)
     prod = Iterators.flatten(Iterators.map(eachindex(atoms)) do i
         view(atoms, 1:i)
     end)
-    x = map(Iterators.product(atoms, atoms)) do (atom1, atom2)::Tuple{Sphere, Sphere}
+    x = map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
             d_1 = euclidean(point, atom1.center)
             d_2 = euclidean(point, atom2.center)
             dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
