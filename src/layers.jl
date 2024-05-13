@@ -13,7 +13,6 @@ using Statistics
 struct Batch{T}
     field::Vector{T}
 end
-(f)(x::Batch) = f.(x.field)
 struct ModelInput{T <: Number}
     point::Point3{T}
     atoms::StructVector{Sphere{T}} #Set
@@ -81,6 +80,9 @@ function preprocessing((; point, atoms)::ModelInput)
         reshape(getproperty(x, f), 1, 1, :)
     end...)
 end
+
+preprocessing(x::Batch) = Batch(preprocessing.(x.field))
+
 """
 Encoding(n_dotₛ,n_Dₛ,cut_distance)
 
