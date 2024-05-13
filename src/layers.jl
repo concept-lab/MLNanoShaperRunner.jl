@@ -68,14 +68,16 @@ end
 
 function preprocessing((; point, atoms)::ModelInput)
     prod = Iterators.flatten(Iterators.map(eachindex(atoms)) do i
-        view(atoms, 1:i)
+		Iterators.map(1:i) do j
+			atoms[i],atoms[j]
+		end
     end)
-    x = map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
+    x = Iterators.map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
             d_1 = euclidean(point, atom1.center)
             d_2 = euclidean(point, atom2.center)
             dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
             (dot, atom1.r, atom2.r, d_1, d_2)
-        end |> vec |> trace("preprossed data") |> PreprocessData
+        end |> collect |> vec |> trace("preprossed data") |> PreprocessData
     PreprocessData(map(propertynames(x)) do f
         reshape(getproperty(x, f), 1, 1, :)
     end...)
