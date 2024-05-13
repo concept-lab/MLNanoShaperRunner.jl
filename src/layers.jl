@@ -64,7 +64,7 @@ function (f::DeepSet)(arg::Batch{PreprocessData}, ps, st)
     res = map(eachindex(lengths)) do i
         sum(res[(lengths[i] + 1):(length[i] + 1)])
     end 
-    res / sqrt.(length.(getfield.(arg, :dot))) |> Batch, st
+    res / sqrt.(length.(getfield.(arg, :dot))) , st
 end
 
 function preprocessing((; point, atoms)::ModelInput)
