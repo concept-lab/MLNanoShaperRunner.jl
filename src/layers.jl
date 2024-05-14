@@ -18,7 +18,7 @@ struct ModelInput{T <: Number}
     atoms::StructVector{Sphere{T}} #Set
 end
 
-struct PreprocessData{T <: AbstractArray}
+struct PreprocessData{T <: AbstractArray{<:Number}}
     dot::T
     r_1::T
     r_2::T
@@ -47,23 +47,23 @@ function (f::DeepSet)(set::AbstractVector{<:AbstractArray}, ps, st)
     trace("input size", length(set))
     sum(set) do arg
         Lux.apply(f.prepross, arg, ps, st) |> first
-    end / sqrt(length(set)), st
+    end ,st#/ sqrt(length(set)), st
 end
 function (f::DeepSet)(arg::PreprocessData, ps, st)
     trace("input size", length(arg.dot))
-    sum(Lux.apply(f.prepross, arg, ps, st) |> first) / sqrt(length(arg.dot)), st
+    sum(Lux.apply(f.prepross, arg, ps, st) |> first),st # / sqrt(length(arg.dot)), st
 end
-function (f::DeepSet)(arg::Batch{PreprocessData}, ps, st)
-    trace("input size", length(mean(getproperty.(arg, :dot))))
-    lengths = vcat([0], cumsum(last.(size.(arg))))
+function (f::DeepSet)(arg::Batch{<:PreprocessData}, ps, st)
+    trace("input size", length.(getproperty.(arg.field, :dot)))
+	lengths = vcat([0], cumsum(last.(size.(getfield.(arg.field,:dot)))))
     batched = PreprocessData(map(1:5) do i
-        vcat.(getfield.(arg.field, i))
-    end...)
+		cat(getfield.(arg.field, i)...;dims = ndims(first(arg.field).dot)) 
+    end...)|> trace("batched")
     res = Lux.apply(f.prepross, batched, ps, st) |> first
-    res = map(eachindex(lengths)) do i
-        sum(res[(lengths[i] + 1):(length[i] + 1)])
-    end
-    res / sqrt.(length.(getfield.(arg, :dot))), st
+	res = map(1:(length(lengths)-1)) do i
+		sum(res[(lengths[i] + 1):(lengths[i + 1])])
+	end |>trace("res"),st
+    # res / sqrt.(length.(getfield.(arg.field, :dot))), st
 end
 
 function preprocessing((; point, atoms)::ModelInput)
@@ -78,8 +78,8 @@ function preprocessing((; point, atoms)::ModelInput)
             dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
             (dot, atom1.r, atom2.r, d_1, d_2)
         end |> vec |> trace("preprossed data")
-    PreprocessData(map(propertynames(PreprocessData)) do f
-        reshape(getproperty(x, f), 1, 1, :)
+    PreprocessData(map(1:5) do f
+        reshape(getfield.(x, f),1, :)
     end...)
 end
 
