@@ -10,8 +10,8 @@ using Distances
 using ChainRulesCore
 using Statistics
 
-struct Batch{T}
-    field::Vector{T}
+struct Batch{T<:AbstractVector}
+    field::T
 end
 struct ModelInput{T <: Number}
     point::Point3{T}
