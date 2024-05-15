@@ -10,7 +10,7 @@ using Distances
 using ChainRulesCore
 using Statistics
 
-struct Batch{T<:AbstractVector}
+struct Batch{T<:Vector}
     field::T
 end
 struct ModelInput{T <: Number}
