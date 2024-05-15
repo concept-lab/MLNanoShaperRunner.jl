@@ -53,7 +53,7 @@ function (f::DeepSet)(arg::PreprocessData, ps, st)
     trace("input size", length(arg.dot))
     sum(Lux.apply(f.prepross, arg, ps, st) |> first), st # / sqrt(length(arg.dot)), st
 end
-function (f::DeepSet)(arg::Batch{<:PreprocessData}, ps, st)
+function (f::DeepSet)(arg::Batch{<:AbstractVector{<:PreprocessData}}, ps, st)
     trace("input size", length.(getproperty.(arg.field, :dot)))
     lengths = vcat([0], cumsum(last.(size.(getfield.(arg.field, :dot)))))
     batched = PreprocessData(map(fieldnames(PreprocessData)) do i
