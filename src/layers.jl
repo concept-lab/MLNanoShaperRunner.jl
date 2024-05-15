@@ -56,7 +56,7 @@ end
 function (f::DeepSet)(arg::Batch{<:PreprocessData}, ps, st)
     trace("input size", length.(getproperty.(arg.field, :dot)))
 	lengths = vcat([0], cumsum(last.(size.(getfield.(arg.field,:dot)))))
-    batched = PreprocessData(map(1:5) do i
+	batched = PreprocessData(map(fieldnames(PreprocessData)) do i
 		cat(getfield.(arg.field, i)...;dims = ndims(first(arg.field).dot)) 
     end...)|> trace("batched")
     res = Lux.apply(f.prepross, batched, ps, st) |> first
