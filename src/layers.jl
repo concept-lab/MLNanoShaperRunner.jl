@@ -78,7 +78,7 @@ function preprocessing((; point, atoms)::ModelInput)
             dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
             (dot, atom1.r, atom2.r, d_1, d_2)
         end |> vec |> trace("preprossed data")
-    PreprocessData(map(fieldnames(PreprocessData)) do f
+    PreprocessData(map(1:5) do f
         reshape(getfield.(x, f), 1, :)
     end...)
 end
