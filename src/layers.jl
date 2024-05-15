@@ -30,6 +30,7 @@ end
 Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessData
+
 function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData; cutoff_radius)
     vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) .*
     cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
@@ -54,13 +55,13 @@ function (f::DeepSet)(arg::PreprocessData, ps, st)
     sum(Lux.apply(f.prepross, arg, ps, st) |> first), st # / sqrt(length(arg.dot)), st
 end
 function (f::DeepSet)(arg::Batch{<:AbstractVector{<:PreprocessData}}, ps, st)
-    trace("input size", length.(getproperty.(arg.field, :dot)))
+    # trace("input size", length.(getproperty.(arg.field, :dot)))
     lengths = vcat([0], cumsum(last.(size.(getfield.(arg.field, :dot)))))
     batched = PreprocessData(map(fieldnames(PreprocessData)) do i
         cat(getfield.(arg.field, i)...; dims = ndims(first(arg.field).dot))
-    end...) |> trace("batched")
+    end...) #|> trace("batched")
     res = Lux.apply(f.prepross, batched, ps, st) |> first
-    res = map(1:(length(lengths) - 1)) do i
+    map(1:(length(lengths) - 1)) do i
         sum(res[(lengths[i] + 1):(lengths[i + 1])])
     end |> trace("res"), st
     # res / sqrt.(length.(getfield.(arg.field, :dot))), st

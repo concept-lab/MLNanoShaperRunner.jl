@@ -13,14 +13,14 @@ function anakin(; cutoff_radius=3.0f0)
             elu),
         Dense(10 => 1, elu;
             init_weight=(args...) -> glorot_uniform(args...; gain=1 / 25_0000)))
-    Lux.Chain(preprocessing, gpu_device(),
-        DeepSet(Chain(Encoding(a, b, cutoff_radius), chain)), tanh_fast)
+    Lux.Chain(preprocessing, 
+        DeepSet(Chain(gpu_device(),Encoding(a, b, cutoff_radius), chain)), tanh_fast)
 end
 
 function angular_dense(; cutoff_radius=3.0f0)
     chain = Chain(Dense(5 => 10,elu),
         Dense(10 => 1, elu;
             init_weight=(args...) -> glorot_uniform(args...; gain=1 / 25_0000)))
-    Lux.Chain(preprocessing, gpu_device(),
-        DeepSet(Chain(x -> symetrise(x; cutoff_radius), trace("feature vector"), chain)), tanh_fast)
+    Lux.Chain(preprocessing,
+        DeepSet(Chain(gpu_device(),x -> symetrise(x; cutoff_radius), trace("feature vector"), chain)), tanh_fast)
 end
