@@ -47,39 +47,39 @@ function (f::DeepSet)(set::AbstractVector{<:AbstractArray}, ps, st)
     trace("input size", length(set))
     sum(set) do arg
         Lux.apply(f.prepross, arg, ps, st) |> first
-    end ,st#/ sqrt(length(set)), st
+    end, st#/ sqrt(length(set)), st
 end
 function (f::DeepSet)(arg::PreprocessData, ps, st)
     trace("input size", length(arg.dot))
-    sum(Lux.apply(f.prepross, arg, ps, st) |> first),st # / sqrt(length(arg.dot)), st
+    sum(Lux.apply(f.prepross, arg, ps, st) |> first), st # / sqrt(length(arg.dot)), st
 end
 function (f::DeepSet)(arg::Batch{<:PreprocessData}, ps, st)
     trace("input size", length.(getproperty.(arg.field, :dot)))
-	lengths = vcat([0], cumsum(last.(size.(getfield.(arg.field,:dot)))))
-	batched = PreprocessData(map(fieldnames(PreprocessData)) do i
-		cat(getfield.(arg.field, i)...;dims = ndims(first(arg.field).dot)) 
-    end...)|> trace("batched")
+    lengths = vcat([0], cumsum(last.(size.(getfield.(arg.field, :dot)))))
+    batched = PreprocessData(map(fieldnames(PreprocessData)) do i
+        cat(getfield.(arg.field, i)...; dims = ndims(first(arg.field).dot))
+    end...) |> trace("batched")
     res = Lux.apply(f.prepross, batched, ps, st) |> first
-	res = map(1:(length(lengths)-1)) do i
-		sum(res[(lengths[i] + 1):(lengths[i + 1])])
-	end |>trace("res"),st
+    res = map(1:(length(lengths) - 1)) do i
+        sum(res[(lengths[i] + 1):(lengths[i + 1])])
+    end |> trace("res"), st
     # res / sqrt.(length.(getfield.(arg.field, :dot))), st
 end
 
 function preprocessing((; point, atoms)::ModelInput)
-    prod = Iterators.map(eachindex(atoms)) do i
-               Iterators.map(1:i) do j
+    prod = reduce(vcat,map(eachindex(atoms)) do i
+               map(1:i) do j
                    atoms[i], atoms[j]
                end
-           end |> Iterators.flatten |> collect |> trace("prod")
+		   end) |> trace("prod")
     x = map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
             d_1 = euclidean(point, atom1.center)
             d_2 = euclidean(point, atom2.center)
             dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
             (dot, atom1.r, atom2.r, d_1, d_2)
         end |> vec |> trace("preprossed data")
-    PreprocessData(map(1:5) do f
-        reshape(getfield.(x, f),1, :)
+    PreprocessData(map(fieldnames(PreprocessData)) do f
+        reshape(getfield.(x, f), 1, :)
     end...)
 end
 
