@@ -39,9 +39,9 @@ Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessData
 
-function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData; cutoff_radius)
+function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{T}; cutoff_radius::T) where T<:Number
     trace("sym", dot)
-
+	cutoff_radius::Float32
     res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |> trace("sym")
     res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
@@ -149,11 +149,13 @@ function (l::Encoding{T})(input::PreprocessData{<:AbstractArray{T}},
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
-    if r >= cut_radius
-        zero(T)
-    else
-        (1 + cos(π * r / cut_radius)) / 2
-    end
+    ifelse(r >= cut_radius,zero(T),(1 + cos(π * r / cut_radius)) / 2)
+end
+
+function preoprocessed_reshape(x::PreprocessData,arg::Union{Int,Colon}...)
+	PreprocessData(map(fieldnames(PreprocessData)) do name
+		reshape(getfield(x,name),arg...)
+	end...)
 end
 
 function struct_stack(x::AbstractArray{PreprocessData{T}}) where {T}
