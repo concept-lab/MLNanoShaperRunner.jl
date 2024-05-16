@@ -21,12 +21,12 @@ input of the model
 - point::Point3, the position of the input
 - atoms::StructVector{Sphere}, the atoms in the neighboord
 """
-struct ModelInput{T <: Number}
+struct ModelInput{T<:Number}
     point::Point3{T}
     atoms::StructVector{Sphere{T}} #Set
 end
 
-struct PreprocessData{T <: AbstractArray{<:Number}}
+struct PreprocessData{T<:AbstractArray{<:Number}}
     dot::T
     r_1::T
     r_2::T
@@ -40,10 +40,10 @@ Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessData
 
 function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData; cutoff_radius)
-	trace("sym",dot)
+    trace("sym", dot)
 
-	res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |> trace("sym")
-	res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
+    res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |> trace("sym")
+    res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
 
 PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
@@ -68,30 +68,30 @@ function (f::DeepSet)(arg::Batch{<:AbstractVector{<:PreprocessData}}, ps, st)
     # trace("input size", length.(getproperty.(arg.field, :dot)))
     lengths = vcat([0], cumsum(last.(size.(getfield.(arg.field, :dot)))))
     batched = PreprocessData(map(fieldnames(PreprocessData)) do i
-        cat(getfield.(arg.field, i)...; dims = ndims(first(arg.field).dot))
+        cat(getfield.(arg.field, i)...; dims=ndims(first(arg.field).dot))
     end...) #|> trace("batched")
     res = Lux.apply(f.prepross, batched, ps, st) |> first
-    map(1:(length(lengths) - 1)) do i
-        sum(res[(lengths[i] + 1):(lengths[i + 1])])
+    map(1:(length(lengths)-1)) do i
+        sum(res[(lengths[i]+1):(lengths[i+1])])
     end |> trace("res"), st
     # res / sqrt.(length.(getfield.(arg.field, :dot))), st
 end
 
 function preprocessing((; point, atoms)::ModelInput)
-    prod = reduce(vcat,map(eachindex(atoms)) do i
-               map(1:i) do j
-                   atoms[i], atoms[j]
-               end
-		   end) 
-    x = map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
-            d_1 = euclidean(point, atom1.center)
-            d_2 = euclidean(point, atom2.center)
-            dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
-            (dot, atom1.r, atom2.r, d_1, d_2)
-        end |> vec 
+    prod = reduce(vcat, map(eachindex(atoms)) do i
+        map(1:i) do j
+            atoms[i], atoms[j]
+        end
+    end)
+    x = map(prod) do (atom1, atom2)::Tuple{Sphere,Sphere}
+        d_1 = euclidean(point, atom1.center)
+        d_2 = euclidean(point, atom2.center)
+        dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
+        (dot, atom1.r, atom2.r, d_1, d_2)
+    end |> vec
     PreprocessData(map(1:5) do f
         reshape(getfield.(x, f), 1, :)
-	end...) |> trace("preprocessing")
+    end...) |> trace("preprocessing")
 end
 
 preprocessing(x::Batch) = Batch(preprocessing.(x.field))
@@ -113,30 +113,30 @@ A lux layer which embed angular and radial `PreprocessData` into a feature vecto
 x_{ij} = (\\frac{1}{2} + \\frac{dot - dot_{si}}{4})^\\eta * \\exp(-\\zeta ~ ( \\frac{d_1 + d_2}{2} - D_{si} ) ) \\times cut(d_1) \\times cut(d_2) 
 ```
 """
-struct Encoding{T <: Number} <: Lux.AbstractExplicitLayer
+struct Encoding{T<:Number} <: Lux.AbstractExplicitLayer
     n_dotₛ::Int
     n_Dₛ::Int
     cut_distance::T
 end
 
 function Lux.initialparameters(::AbstractRNG, l::Encoding{T}) where {T}
-    (dotsₛ = reshape(collect(range(T(0), T(1); length = l.n_dotₛ)), 1, :),
-        Dₛ = reshape(collect(range(T(0), l.cut_distance; length = l.n_Dₛ)), :, 1),
-        η = ones(T, 1, 1) ./ l.n_dotₛ,
-        ζ = ones(T, 1, 1) ./ l.n_Dₛ)
+    (dotsₛ=reshape(collect(range(T(0), T(1); length=l.n_dotₛ)), 1, :),
+        Dₛ=reshape(collect(range(T(0), l.cut_distance; length=l.n_Dₛ)), :, 1),
+        η=ones(T, 1, 1) ./ l.n_dotₛ,
+        ζ=ones(T, 1, 1) ./ l.n_Dₛ)
 end
 Lux.initialstates(::AbstractRNG, l::Encoding) = (;)
 
 function mergedims(x::AbstractArray, dims::AbstractRange)
-    pre = size(x)[begin:(first(dims) - 1)]
+    pre = size(x)[begin:(first(dims)-1)]
     merged = size(x)[dims]
-    post = size(x)[(last(dims) + 1):end]
+    post = size(x)[(last(dims)+1):end]
     reshape(x, (pre..., prod(merged), post...))
 end
 
 function (l::Encoding{T})(input::PreprocessData{<:AbstractArray{T}},
-        (; dotsₛ, η, ζ, Dₛ),
-        st) where {T}
+    (; dotsₛ, η, ζ, Dₛ),
+    st) where {T}
     (; dot, d_1, d_2, r_1, r_2) = input |> trace("input")
     encoded = ((2 .+ dot .- tanh.(dotsₛ)) ./ 4) .^ ζ .*
               exp.(-η .* ((d_1 .+ d_2) ./ 2 .- Dₛ) .^ 2) .*
@@ -148,7 +148,7 @@ function (l::Encoding{T})(input::PreprocessData{<:AbstractArray{T}},
     res |> trace("features"), st
 end
 
-function cut(cut_radius::T, r::T)::T where T <: Number
+function cut(cut_radius::T, r::T)::T where {T<:Number}
     if r >= cut_radius
         zero(T)
     else
