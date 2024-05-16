@@ -13,6 +13,14 @@ using Statistics
 struct Batch{T<:Vector}
     field::T
 end
+"""
+	ModelInput
+
+input of the model
+# Fields
+- point::Point3, the position of the input
+- atoms::StructVector{Sphere}, the atoms in the neighboord
+"""
 struct ModelInput{T <: Number}
     point::Point3{T}
     atoms::StructVector{Sphere{T}} #Set
@@ -167,26 +175,26 @@ function ChainRulesCore.rrule(::typeof(trace), message, x)
     return y, trace_pullback
 end
 
-function ChainRulesCore.rrule(
-        ::typeof(Base.getproperty), array::StructArray{T}, field::Symbol) where {T}
-    member = getproperty(array, field)
-    function getproperty_pullback(y_hat)
-        (NoTangent(),
-            StructArray(;
-                (f => if f == field
-                     y_hat
-                 else
-                     zero(getproperty(array, f))
-                 end
-                for f in propertynames(array))...),
-            NoTangent()) |> trace("getproperty_pullback")
-    end
-    member, getproperty_pullback
-end
-
-function ChainRulesCore.rrule(::Type{StructArray}, fields::Tuple)
-    res = StructArray(fields)
-    function StructArray_pullback(df)
-    end
-    res, StructArray_pullback
-end
+# function ChainRulesCore.rrule(
+#         ::typeof(Base.getproperty), array::StructArray{T}, field::Symbol) where {T}
+#     member = getproperty(array, field)
+#     function getproperty_pullback(y_hat)
+#         (NoTangent(),
+#             StructArray(;
+#                 (f => if f == field
+#                      y_hat
+#                  else
+#                      zero(getproperty(array, f))
+#                  end
+#                 for f in propertynames(array))...),
+#             NoTangent()) |> trace("getproperty_pullback")
+#     end
+#     member, getproperty_pullback
+# end
+#
+# function ChainRulesCore.rrule(::Type{StructArray}, fields::Tuple)
+#     res = StructArray(fields)
+#     function StructArray_pullback(df)
+#     end
+#     res, StructArray_pullback
+# end
