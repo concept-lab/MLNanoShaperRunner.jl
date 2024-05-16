@@ -42,8 +42,8 @@ Adapt.@adapt_structure PreprocessData
 function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData; cutoff_radius)
 	trace("sym",dot)
 
-    vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) .*
-    cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
+	res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |> trace("sym")
+	res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
 
 PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
