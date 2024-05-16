@@ -39,7 +39,7 @@ Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessData
 
-function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{T}; cutoff_radius::T) where T<:Number
+function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{<:AbstractArray{T}}; cutoff_radius::T) where T<:Number
     trace("sym", dot)
 	cutoff_radius::Float32
     res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |> trace("sym")
