@@ -40,6 +40,7 @@ Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessData
 
 function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData; cutoff_radius)
+
     vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) .*
     cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
@@ -80,16 +81,16 @@ function preprocessing((; point, atoms)::ModelInput)
                map(1:i) do j
                    atoms[i], atoms[j]
                end
-		   end) |> trace("prod")
+		   end) 
     x = map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
             d_1 = euclidean(point, atom1.center)
             d_2 = euclidean(point, atom2.center)
             dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
             (dot, atom1.r, atom2.r, d_1, d_2)
-        end |> vec |> trace("preprossed data")
+        end |> vec 
     PreprocessData(map(1:5) do f
         reshape(getfield.(x, f), 1, :)
-    end...)
+	end...) |> trace("preprocessing")
 end
 
 preprocessing(x::Batch) = Batch(preprocessing.(x.field))
