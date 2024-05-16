@@ -148,9 +148,9 @@ function (l::Encoding{T})(input::PreprocessData{<:AbstractArray{T}},
     res |> trace("features"), st
 end
 
-function cut(cut_radius::Number, r::Number)
+function cut(cut_radius::T, r::T)::T where T <: Number
     if r >= cut_radius
-        zero(r)
+        zero(T)
     else
         (1 + cos(π * r / cut_radius)) / 2
     end
