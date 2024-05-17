@@ -39,16 +39,29 @@ Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessData
 
-function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{<:AbstractArray{T}}; cutoff_radius::T) where T<:Number
-    trace("sym", dot)
-	cutoff_radius::Float32
-    res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |> trace("sym")
-    res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
-end
 
 PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
     getindex.(x, f)
 end...)
+
+function preprocessing((; point, atoms)::ModelInput)
+    prod = reduce(vcat, map(eachindex(atoms)) do i
+        map(1:i) do j
+            atoms[i], atoms[j]
+        end
+    end)
+    x = map(prod) do (atom1, atom2)::Tuple{Sphere,Sphere}
+        d_1 = euclidean(point, atom1.center)
+        d_2 = euclidean(point, atom2.center)
+        dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
+        (dot, atom1.r, atom2.r, d_1, d_2)
+    end |> vec
+    PreprocessData(map(1:5) do f
+        reshape(getfield.(x, f), 1, :)
+    end...) 
+end
+
+preprocessing(x::Batch) = Batch(preprocessing.(x.field))
 
 @concrete struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
     prepross
@@ -77,24 +90,12 @@ function (f::DeepSet)(arg::Batch{<:AbstractVector{<:PreprocessData}}, ps, st)
     # res / sqrt.(length.(getfield.(arg.field, :dot))), st
 end
 
-function preprocessing((; point, atoms)::ModelInput)
-    prod = reduce(vcat, map(eachindex(atoms)) do i
-        map(1:i) do j
-            atoms[i], atoms[j]
-        end
-    end)
-    x = map(prod) do (atom1, atom2)::Tuple{Sphere,Sphere}
-        d_1 = euclidean(point, atom1.center)
-        d_2 = euclidean(point, atom2.center)
-        dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
-        (dot, atom1.r, atom2.r, d_1, d_2)
-    end |> vec
-    PreprocessData(map(1:5) do f
-        reshape(getfield.(x, f), 1, :)
-    end...) |> trace("preprocessing")
+function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{<:AbstractArray{T}}; cutoff_radius::T) where T<:Number
+    trace("sym", dot)
+	cutoff_radius::Float32
+    res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |> trace("sym")
+    res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
-
-preprocessing(x::Batch) = Batch(preprocessing.(x.field))
 
 """
 Encoding(n_dotₛ,n_Dₛ,cut_distance)
