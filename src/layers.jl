@@ -158,6 +158,7 @@ function preoprocessed_reshape(x::PreprocessData,arg::Union{Int,Colon}...)
 		reshape(getfield(x,name),arg...)
 	end...)
 end
+preoprocessed_reshape(arg::Union{Int,Colon}...) = x -> preoprocessed_reshape(x,arg...)
 
 function struct_stack(x::AbstractArray{PreprocessData{T}}) where {T}
     f(field) = reshape(getproperty.(x, field), 1, 1, size(x)...)
