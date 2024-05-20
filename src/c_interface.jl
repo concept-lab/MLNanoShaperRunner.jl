@@ -16,9 +16,9 @@ mutable struct State
     weights::Option{Lux.Experimental.TrainState}
     atoms_tree::Option{KDTree{Point3f}}
     atoms::Option{StructVector{Sphere{Float32}}}
-	cutoff_radius::Float32
+    cutoff_radius::Float32
 end
-global_state = State(nothing, nothing, nothing,3.0)
+global_state = State(nothing, nothing, nothing, 3.0)
 
 struct CSphere
     x::Float32
@@ -72,13 +72,31 @@ Start is a pointer to the start of the array of `CSphere` and `length` is the le
 """
 function load_atoms(start::Ptr{CSphere}, length::UInt64)::Int
     try
-        data = Iterators.map(unsafe_wrap(Array, start, length)) do (; x, y, z, r)
+        global_state.atoms = Iterators.map(unsafe_wrap(
+            Array, start, length)) do (; x, y, z, r)
             Sphere(Point3f(x, y, z), r)
         end |> StridedVector
         global_state.atoms = KDTree(data; reorder = false)
     catch err
         @error err
         2
+    end
+end
+
+"""
+    set_cutoff_radius(cutoff_radius::Float32)::Int
+
+Set the cutoff_radius value for inference.
+# Return an error status:
+- 0: OK
+- 1: formatting error
+"""
+function set_cutoff_radius(cutoff_radius::Float32)::Int
+    if cutoff_radius >= 0
+        global_state.cutoff_radius = cutoff_radius
+        0
+    else
+        1
     end
 end
 
@@ -95,6 +113,7 @@ function eval_model(x::Float32, y::Float32, z::Float32)::Float32
         global_state.weights.parameters, global_state.weights.state)
 end
 
-@cfunction load_weights Int (String,)
-@cfunction load_atoms Int (Ptr{CSphere}, UInt32)
+@cfunction load_weights Cint (String,)
+@cfunction load_atoms Cint (Ptr{CSphere}, UInt32)
 @cfunction eval_model Float32 (Float32, Float32, Float32)
+@cfunction set_cutoff_radius Cint (Float32,)
