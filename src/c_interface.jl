@@ -38,7 +38,8 @@ Load the model `parameters` and `model` from a serialised training state at abso
 - 2: file could not be deserialized properly
 - 3: unknow error
 """
-function load_weights(path::String)::Int
+function load_weights end
+Base.@ccallable function load_weights(path::String)::Int
     try
         if ispath(path)
             data = deserialize(path)
@@ -70,7 +71,8 @@ Start is a pointer to the start of the array of `CSphere` and `length` is the le
 - 1: data could not be read
 - 2: unknow error
 """
-function load_atoms(start::Ptr{CSphere}, length::UInt64)::Int
+function load_atoms end
+Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::UInt64)::Int
     try
         global_state.atoms = Iterators.map(unsafe_wrap(
             Array, start, length)) do (; x, y, z, r)
@@ -91,7 +93,8 @@ Set the cutoff_radius value for inference.
 - 0: OK
 - 1: formatting error
 """
-function set_cutoff_radius(cutoff_radius::Float32)::Int
+function set_cutoff_radius end
+Base.@ccallable function set_cutoff_radius(cutoff_radius::Float32)::Int
     if cutoff_radius >= 0
         global_state.cutoff_radius = cutoff_radius
         0
@@ -105,15 +108,11 @@ end
 
 evaluate the model at coordinates `x` `y` `z`.
 """
-function eval_model(x::Float32, y::Float32, z::Float32)::Float32
+function eval_model end
+Base.@ccallable function eval_model(x::Float32, y::Float32, z::Float32)::Float32
     point = Point3f(x, y, z)
     neighbors = global_state.atoms[inrange(
         global_state.atoms_tree, point, global_state.cutoff_radius)]
     Lux.eval(global_state.weights.model, ModelInput(point, neighbors),
         global_state.weights.parameters, global_state.weights.state)
 end
-
-@cfunction load_weights Cint (String,)
-@cfunction load_atoms Cint (Ptr{CSphere}, UInt32)
-@cfunction eval_model Float32 (Float32, Float32, Float32)
-@cfunction set_cutoff_radius Cint (Float32,)
