@@ -32,10 +32,9 @@ function deep_angular_dense(; cutoff_radius::Float32=3.0f0)
         Dense(5 => 30; use_bias=false),
         Dense(30 => 10, elu))
     Chain(preprocessing,
-        DeepSet(Chain(gpu_device(), x -> symetrise(x; cutoff_radius),
-            trace("feature vector"), chain)),
+        DeepSet(Chain(gpu_device(), x -> symetrise(x; cutoff_radius),chain)),
         Dense(10 => 30; use_bias=false),
-        Dense(30 => 10, elu)
+        Dense(30 => 10, elu),
         Dense(10 => 1, elu;
             init_weight=(args...) -> glorot_uniform(args...; gain=1 / 25_0000)),
         tanh_fast;

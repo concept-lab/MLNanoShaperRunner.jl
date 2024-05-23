@@ -11,7 +11,7 @@ The global state manipulated by the c interface.
 To use, you must first load the weights using `load_weights` and the input atoms using `load_atoms`.
 Then you can call eval_model to get the field on a certain point.
 """
-Option{T} = Union{T, Nothing}
+Option{T} = Union{T,Nothing}
 mutable struct State
     weights::Option{Lux.Experimental.TrainState}
     atoms_tree::Option{KDTree{Point3f}}
@@ -20,12 +20,13 @@ mutable struct State
 end
 global_state = State(nothing, nothing, nothing, 3.0)
 
-struct CSphere
+mutable struct CSphere
     x::Float32
     y::Float32
     z::Float32
     r::Float32
 end
+CSphere((;center,r)::Sphere) = CSphere(center...,r)
 
 """
     load_weights(path::String)::Int
@@ -47,11 +48,11 @@ Base.@ccallable function load_weights(path::String)::Int
                 global_state.weights = deserialize(path)
                 0
             else
-                @error "file not found" path
+                @error "wrong type, expected Lux.Experimental.TrainState, got" typeof(data)
                 2
             end
         else
-            @error "wrong type, expected Lux.Experimental.TrainState, got" typeof(data)
+            @error "file not found" path
             1
         end
     catch err
@@ -72,13 +73,13 @@ Start is a pointer to the start of the array of `CSphere` and `length` is the le
 - 2: unknow error
 """
 function load_atoms end
-Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::UInt64)::Int
+Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::Int)::Int
     try
         global_state.atoms = Iterators.map(unsafe_wrap(
             Array, start, length)) do (; x, y, z, r)
             Sphere(Point3f(x, y, z), r)
         end |> StridedVector
-        global_state.atoms = KDTree(data; reorder = false)
+        global_state.atoms = KDTree(data; reorder=false)
     catch err
         @error err
         2

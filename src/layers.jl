@@ -58,10 +58,12 @@ function preprocessing((; point, atoms)::ModelInput)
     end |> vec
     PreprocessData(map(1:5) do f
         reshape(getfield.(x, f), 1, :)
-    end...) 
+    end...)
 end
 
 preprocessing(x::Batch) = Batch(preprocessing.(x.field))
+
+expand_dims(x::AbstractArray, n::Integer) = reshape(x, size(x)[begin:n-1]..., n, size(x)[n:end]...)
 
 @concrete struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
     prepross
@@ -78,22 +80,19 @@ function (f::DeepSet)(arg::PreprocessData, ps, st)
     sum(Lux.apply(f.prepross, arg, ps, st) |> first), st # / sqrt(length(arg.dot)), st
 end
 function (f::DeepSet)(arg::Batch{<:AbstractVector{<:PreprocessData}}, ps, st)
-    # trace("input size", length.(getproperty.(arg.field, :dot)))
-    lengths = vcat([0], cumsum(last.(size.(getfield.(arg.field, :dot)))))
+    lengths = vcat([0], getfield.(arg.field, :dot) .|> size .|> last |> cumsum)
     batched = PreprocessData(map(fieldnames(PreprocessData)) do i
         cat(getfield.(arg.field, i)...; dims=ndims(first(arg.field).dot))
-    end...) #|> trace("batched")
-    res = Lux.apply(f.prepross, batched, ps, st) |> first
-    map(1:(length(lengths)-1)) do i
-        sum(res[(lengths[i]+1):(lengths[i+1])])
-    end |> trace("res"), st
-    # res / sqrt.(length.(getfield.(arg.field, :dot))), st
+    end...)
+    res = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
+    mapreduce(hcat, 1:(length(lengths)-1)) do i
+        sum(res[:,(lengths[i]+1):lengths[i+1]]; dims=2) 
+    end, st
 end
 
-function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{<:AbstractArray{T}}; cutoff_radius::T) where T<:Number
-    trace("sym", dot)
-	cutoff_radius::Float32
-    res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |> trace("sym")
+function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{<:AbstractArray{T}}; cutoff_radius::T) where {T<:Number}
+    cutoff_radius::Float32
+    res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2))
     res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
 
@@ -150,15 +149,15 @@ function (l::Encoding{T})(input::PreprocessData{<:AbstractArray{T}},
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
-    ifelse(r >= cut_radius,zero(T),(1 + cos(π * r / cut_radius)) / 2)
+    ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
 end
 
-function preoprocessed_reshape(x::PreprocessData,arg::Union{Int,Colon}...)
-	PreprocessData(map(fieldnames(PreprocessData)) do name
-		reshape(getfield(x,name),arg...)
-	end...)
+function preoprocessed_reshape(x::PreprocessData, arg::Union{Int,Colon}...)
+    PreprocessData(map(fieldnames(PreprocessData)) do name
+        reshape(getfield(x, name), arg...)
+    end...)
 end
-preoprocessed_reshape(arg::Union{Int,Colon}...) = x -> preoprocessed_reshape(x,arg...)
+preoprocessed_reshape(arg::Union{Int,Colon}...) = x -> preoprocessed_reshape(x, arg...)
 
 function struct_stack(x::AbstractArray{PreprocessData{T}}) where {T}
     f(field) = reshape(getproperty.(x, field), 1, 1, size(x)...)
