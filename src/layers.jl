@@ -97,7 +97,7 @@ function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{<:AbstractArray{T
     res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
 
-struct Partial{F<:Function,A<:Tuple,B<:NamedTuple}
+struct Partial{F<:Function,A<:Tuple,B<:Base.Pairs}<:Function
     f::F
     args::A
     kargs::B
@@ -105,7 +105,7 @@ struct Partial{F<:Function,A<:Tuple,B<:NamedTuple}
 end
 (f::Partial)(args...;kargs...) = f.f(f.args...,args...;f.kargs...,kargs...)
 
-symetrise(; cutoff_radius::Number) = Partial(symetrise;cutoff_radius)
+symetrise(; cutoff_radius::Number) = Partial(symetrise;cutoff_radius) |> Lux.WrappedFunction
 
 """
 Encoding(n_dotₛ,n_Dₛ,cut_distance)
