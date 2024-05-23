@@ -12,7 +12,7 @@ function anakin(; cutoff_radius::Float32=3.0f0)
     chain = Chain(Dense(a * b + 2 => 10,
             elu),
         Dense(10 => 1, elu;
-            init_weight=(args...) -> glorot_uniform(args...; gain=1 / 25_0000)))
+            init_weight=Partial(glorot_uniform; gain=1 / 25_0000)))
     Lux.Chain(preprocessing,
         DeepSet(Chain(gpu_device(), preoprocessed_reshape(1, 1, :),
             Encoding(a, b, cutoff_radius), chain)), tanh_fast; name="anakin")
@@ -21,9 +21,9 @@ end
 function angular_dense(; cutoff_radius::Float32=3.0f0)
     chain = Chain(Dense(5 => 10, elu),
         Dense(10 => 1, elu;
-            init_weight=(args...) -> glorot_uniform(args...; gain=1 / 25_0000)))
+            init_weight=Partial(glorot_uniform; gain=1 / 25_0000)))
     Lux.Chain(preprocessing,
-        DeepSet(Chain(gpu_device(), x -> symetrise(x; cutoff_radius),
+        DeepSet(Chain(gpu_device(), symetrise(; cutoff_radius),
             trace("feature vector"), chain)), tanh_fast; name="angular_dense")
 end
 
@@ -32,11 +32,11 @@ function deep_angular_dense(; cutoff_radius::Float32=3.0f0)
         Dense(5 => 30; use_bias=false),
         Dense(30 => 10, elu))
     Chain(preprocessing,
-        DeepSet(Chain(gpu_device(), x -> symetrise(x; cutoff_radius),chain)),
+        DeepSet(Chain(gpu_device(), symetrise(; cutoff_radius),chain)),
         Dense(10 => 30; use_bias=false),
         Dense(30 => 10, elu),
         Dense(10 => 1, elu;
-            init_weight=(args...) -> glorot_uniform(args...; gain=1 / 25_0000)),
+            init_weight=Partial(glorot_uniform; gain=1 / 25_0000)),
         tanh_fast;
         name="deep_angular_dense")
 end

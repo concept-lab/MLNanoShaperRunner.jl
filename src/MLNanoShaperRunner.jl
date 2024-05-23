@@ -8,5 +8,5 @@ include("Import.jl")
 using Reexport
 @reexport using .Import
 
-export RegionMesh,distance,signed_distance,anakin,trace,ModelInput,Batch
+export RegionMesh,distance,signed_distance,anakin,trace,ModelInput,Batch, AnnotedKDTree, select_neighboord
 end # module MLNanoShaperRunner

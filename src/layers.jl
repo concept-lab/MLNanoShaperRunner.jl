@@ -9,6 +9,7 @@ using StructArrays
 using Distances
 using ChainRulesCore
 using Statistics
+using Static
 
 struct Batch{T<:Vector}
     field::T
@@ -86,7 +87,7 @@ function (f::DeepSet)(arg::Batch{<:AbstractVector{<:PreprocessData}}, ps, st)
     end...)
     res = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
     mapreduce(hcat, 1:(length(lengths)-1)) do i
-        sum(res[:,(lengths[i]+1):lengths[i+1]]; dims=2) 
+        sum(res[:, (lengths[i]+1):lengths[i+1]]; dims=2)
     end, st
 end
 
@@ -95,6 +96,16 @@ function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{<:AbstractArray{T
     res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2))
     res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
+
+struct Partial{F<:Function,A<:Tuple,B<:NamedTuple}
+    f::F
+    args::A
+    kargs::B
+	Partial(f, args...; kargs...) = new{typeof(f),typeof(args),typeof(kargs)}(f,args,kargs)
+end
+(f::Partial)(args...;kargs...) = f.f(f.args...,args...;f.kargs...,kargs...)
+
+symetrise(; cutoff_radius::Number) = Partial(symetrise;cutoff_radius)
 
 """
 Encoding(n_dotₛ,n_Dₛ,cut_distance)
@@ -180,6 +191,19 @@ function ChainRulesCore.rrule(::typeof(trace), message, x)
     return y, trace_pullback
 end
 
+struct AnnotedKDTree{Type,Property,Subtype}
+    data::StructVector{Type}
+    tree::KDTree{Subtype}
+    function AnnotedKDTree(data::StructVector, property::StaticSymbol)
+        new{eltype(data),dynamic(property),
+            eltype(getproperty(StructArrays.components(data), dynamic(property)))}(
+            data, KDTree(getproperty(data, dynamic(property)); reorder=false))
+    end
+end
+function select_neighboord(
+    point, (; data, tree)::AnnotedKDTree; cutoff_radius)
+    data[inrange(tree, point, cutoff_radius)]
+end
 # function ChainRulesCore.rrule(
 #         ::typeof(Base.getproperty), array::StructArray{T}, field::Symbol) where {T}
 #     member = getproperty(array, field)

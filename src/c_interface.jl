@@ -2,6 +2,7 @@ using NearestNeighbors
 using Serialization
 using Lux
 using GeometryBasics
+using MLNanoShaperRunner
 using StructArrays
 
 """
@@ -43,9 +44,11 @@ function load_weights end
 Base.@ccallable function load_weights(path::String)::Int
     try
         if ispath(path)
+			@debug "deserializing"
             data = deserialize(path)
+			@debug "deserialized"
             if typeof(data) <: Lux.Experimental.TrainState
-                global_state.weights = deserialize(path)
+                global_state.weights = data
                 0
             else
                 @error "wrong type, expected Lux.Experimental.TrainState, got" typeof(data)
@@ -75,10 +78,10 @@ Start is a pointer to the start of the array of `CSphere` and `length` is the le
 function load_atoms end
 Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::Int)::Int
     try
-        global_state.atoms = Iterators.map(unsafe_wrap(
+        global_state.atoms = AnnotedKDTree(Iterators.map(unsafe_wrap(
             Array, start, length)) do (; x, y, z, r)
             Sphere(Point3f(x, y, z), r)
-        end |> StridedVector
+		end |> StridedVector,static(:center))
         global_state.atoms = KDTree(data; reorder=false)
     catch err
         @error err
