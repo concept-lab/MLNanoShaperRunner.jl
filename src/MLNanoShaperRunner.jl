@@ -1,10 +1,10 @@
 module MLNanoShaperRunner
 
-include("c_interface.jl")
+include("Import.jl")
 include("distance_tree.jl")
 include("layers.jl")
 include("models.jl")
-include("Import.jl")
+include("c_interface.jl")
 using Reexport
 @reexport using .Import
 

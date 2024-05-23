@@ -4,6 +4,7 @@ using Lux
 using GeometryBasics
 using MLNanoShaperRunner
 using StructArrays
+using LuxCore
 
 """
 	state
@@ -14,9 +15,9 @@ Then you can call eval_model to get the field on a certain point.
 """
 Option{T} = Union{T,Nothing}
 mutable struct State
-    weights::Option{Lux.Experimental.TrainState}
-    atoms_tree::Option{KDTree{Point3f}}
-    atoms::Option{StructVector{Sphere{Float32}}}
+    weights::Option{NamedTuple}
+	model::Option{Lux.AbstractExplicitLayer}
+    atoms::Option{AnnotedKDTree{Sphere{Float32},:center}}
     cutoff_radius::Float32
 end
 global_state = State(nothing, nothing, nothing, 3.0)
@@ -47,7 +48,7 @@ Base.@ccallable function load_weights(path::String)::Int
 			@debug "deserializing"
             data = deserialize(path)
 			@debug "deserialized"
-            if typeof(data) <: Lux.Experimental.TrainState
+            if typeof(data) <:NamedTuple 
                 global_state.weights = data
                 0
             else
@@ -81,10 +82,10 @@ Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::Int)::Int
         global_state.atoms = AnnotedKDTree(Iterators.map(unsafe_wrap(
             Array, start, length)) do (; x, y, z, r)
             Sphere(Point3f(x, y, z), r)
-		end |> StridedVector,static(:center))
-        global_state.atoms = KDTree(data; reorder=false)
+		end |>StructVector ,static(:center))
+		0
     catch err
-        @error err
+        @error "error" err
         2
     end
 end
@@ -101,6 +102,7 @@ function set_cutoff_radius end
 Base.@ccallable function set_cutoff_radius(cutoff_radius::Float32)::Int
     if cutoff_radius >= 0
         global_state.cutoff_radius = cutoff_radius
+		global_state.model = angular_dense(;cutoff_radius)
         0
     else
         1
@@ -115,8 +117,7 @@ evaluate the model at coordinates `x` `y` `z`.
 function eval_model end
 Base.@ccallable function eval_model(x::Float32, y::Float32, z::Float32)::Float32
     point = Point3f(x, y, z)
-    neighbors = global_state.atoms[inrange(
-        global_state.atoms_tree, point, global_state.cutoff_radius)]
-    Lux.eval(global_state.weights.model, ModelInput(point, neighbors),
-        global_state.weights.parameters, global_state.weights.state)
+	neighbors = select_neighboord(point,global_state.atoms;cutoff_radius = global_state.cutoff_radius)
+    LuxCore.stateless_apply(global_state.model, ModelInput(point, neighbors),
+        global_state.weights )
 end
