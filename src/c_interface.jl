@@ -31,9 +31,9 @@ end
 CSphere((;center,r)::Sphere) = CSphere(center...,r)
 
 """
-    load_weights(path::String)::Int
+    load_weights(path::String)::Cint
 
-Load the model `parameters` and `model` from a serialised training state at absolute path `path`.
+Load the model `parameters` from a serialised training state at absolute path `path`.
 
 # Return an error status:
 - 0: OK
@@ -42,7 +42,7 @@ Load the model `parameters` and `model` from a serialised training state at abso
 - 3: unknow error
 """
 function load_weights end
-Base.@ccallable function load_weights(path::String)::Int
+Base.@ccallable function load_weights(path::Cstring)::Cint
     try
         if ispath(path)
 			@debug "deserializing"
@@ -66,7 +66,7 @@ Base.@ccallable function load_weights(path::String)::Int
 end
 
 """
-    load_atoms(start::Ptr{CSphere},length::UInt32)::Int
+    load_atoms(start::Ptr{CSphere},length::Cint)::Cint
 
 Load the atoms into the julia model.
 Start is a pointer to the start of the array of `CSphere` and `length` is the length of the array
@@ -77,7 +77,7 @@ Start is a pointer to the start of the array of `CSphere` and `length` is the le
 - 2: unknow error
 """
 function load_atoms end
-Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::Int)::Int
+Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::Cint)::Cint
     try
         global_state.atoms = AnnotedKDTree(Iterators.map(unsafe_wrap(
             Array, start, length)) do (; x, y, z, r)
@@ -99,7 +99,7 @@ Set the cutoff_radius value for inference.
 - 1: formatting error
 """
 function set_cutoff_radius end
-Base.@ccallable function set_cutoff_radius(cutoff_radius::Float32)::Int
+Base.@ccallable function set_cutoff_radius(cutoff_radius::Float32)::Cint
     if cutoff_radius >= 0
         global_state.cutoff_radius = cutoff_radius
 		global_state.model = angular_dense(;cutoff_radius)
