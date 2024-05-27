@@ -148,7 +148,7 @@ function mergedims(x::AbstractArray, dims::AbstractRange)
     reshape(x, (pre..., prod(merged), post...))
 end
 
-function (l::Encoding{T})(input::PreprocessData{T},
+function (l::Encoding{T})(input::StructVector{PreprocessData{T}},
         (; dotsₛ, η, ζ, Dₛ),
         st) where {T}
     (; dot, d_1, d_2, r_1, r_2) = input |> trace("input")
