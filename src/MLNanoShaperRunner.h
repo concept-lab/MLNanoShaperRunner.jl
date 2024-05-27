@@ -5,8 +5,8 @@ typedef struct {
 	float r;
 } Sphere;
 
-void init_julia(int argc, char *argv[]);
-void shutdown_julia(int retcode);
+// void init_julia(int argc, char *argv[]);
+// void shutdown_julia(int retcode);
 
 /*
  *Load the model `parameters` form a serialised training state at absolute path `path`.

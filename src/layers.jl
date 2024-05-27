@@ -11,7 +11,7 @@ using ChainRulesCore
 using Statistics
 using Static
 
-struct Batch{T<:Vector}
+struct Batch{T <: Vector}
     field::T
 end
 """
@@ -22,12 +22,12 @@ input of the model
 - point::Point3, the position of the input
 - atoms::StructVector{Sphere}, the atoms in the neighboord
 """
-struct ModelInput{T<:Number}
+struct ModelInput{T <: Number}
     point::Point3{T}
     atoms::StructVector{Sphere{T}} #Set
 end
 
-struct PreprocessData{T<:AbstractArray{<:Number}}
+struct PreprocessData{T <: Number}
     dot::T
     r_1::T
     r_2::T
@@ -40,7 +40,6 @@ Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessData
 
-
 PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
     getindex.(x, f)
 end...)
@@ -51,20 +50,20 @@ function preprocessing((; point, atoms)::ModelInput)
             atoms[i], atoms[j]
         end
     end)
-    x = map(prod) do (atom1, atom2)::Tuple{Sphere,Sphere}
-        d_1 = euclidean(point, atom1.center)
-        d_2 = euclidean(point, atom2.center)
-        dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
-        (dot, atom1.r, atom2.r, d_1, d_2)
-    end |> vec
-    PreprocessData(map(1:5) do f
-        reshape(getfield.(x, f), 1, :)
-    end...)
+    reshape(
+        map(prod) do (atom1, atom2)::Tuple{Sphere, Sphere}
+            d_1 = euclidean(point, atom1.center)
+            d_2 = euclidean(point, atom2.center)
+            dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
+            PreprocessData(dot, atom1.r, atom2.r, d_1, d_2)
+        end |> StructVector,
+        1,
+        :)
 end
 
-preprocessing(x::Batch) = Batch(preprocessing.(x.field))
-
-expand_dims(x::AbstractArray, n::Integer) = reshape(x, size(x)[begin:n-1]..., n, size(x)[n:end]...)
+function expand_dims(x::AbstractArray, n::Integer)
+    reshape(x, size(x)[begin:(n - 1)]..., n, size(x)[n:end]...)
+end
 
 @concrete struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
     prepross
@@ -76,36 +75,41 @@ function (f::DeepSet)(set::AbstractVector{<:AbstractArray}, ps, st)
         Lux.apply(f.prepross, arg, ps, st) |> first
     end, st#/ sqrt(length(set)), st
 end
-function (f::DeepSet)(arg::PreprocessData, ps, st)
-    trace("input size", length(arg.dot))
-    sum(Lux.apply(f.prepross, arg, ps, st) |> first), st # / sqrt(length(arg.dot)), st
-end
-function (f::DeepSet)(arg::Batch{<:AbstractVector{<:PreprocessData}}, ps, st)
-    lengths = vcat([0], getfield.(arg.field, :dot) .|> size .|> last |> cumsum)
-    batched = PreprocessData(map(fieldnames(PreprocessData)) do i
-        cat(getfield.(arg.field, i)...; dims=ndims(first(arg.field).dot))
-    end...)
+function (f::DeepSet)(arg::Batch, ps, st)
+    lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
+    trace("input", arg)
+    trace("dims", size.(arg.field))
+    batched = ignore_derivatives() do
+        cat(arg.field...; dims = ndims(first(arg.field))) |> trace("batched")
+    end
     res = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
-    mapreduce(hcat, 1:(length(lengths)-1)) do i
-        sum(res[:, (lengths[i]+1):lengths[i+1]]; dims=2)
+    mapreduce(hcat, 1:(length(lengths) - 1)) do i
+        sum(res[:, (lengths[i] + 1):lengths[i + 1]]; dims = 2)
     end, st
 end
 
-function symetrise((; dot, r_1, r_2, d_1, d_2)::PreprocessData{<:AbstractArray{T}}; cutoff_radius::T) where {T<:Number}
+function symetrise((; dot, r_1, r_2, d_1, d_2)::StructArray{PreprocessData{T}};
+        cutoff_radius::T) where {T <: Number}
     cutoff_radius::Float32
-    res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2))
-    res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
+    res = vcat(dot, r_1 .+ r_2, abs.(r_1 .- r_2), d_1 .+ d_2, abs.(d_1 .- d_2)) |>
+          trace("unnormalized")
+    res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2) |> trace("symetrized")
 end
-
-struct Partial{F<:Function,A<:Tuple,B<:Base.Pairs}<:Function
+# symetrise(x::StructVector{<:PreprocessData};cutoff_radius) = symetrise.(x;cutoff_radius) |>trace("symetrized") 
+#
+struct Partial{F <: Function, A <: Tuple, B <: Base.Pairs} <: Function
     f::F
     args::A
     kargs::B
-	Partial(f, args...; kargs...) = new{typeof(f),typeof(args),typeof(kargs)}(f,args,kargs)
+    function Partial(f, args...; kargs...)
+        new{typeof(f), typeof(args), typeof(kargs)}(f, args, kargs)
+    end
 end
-(f::Partial)(args...;kargs...) = f.f(f.args...,args...;f.kargs...,kargs...)
+(f::Partial)(args...; kargs...) = f.f(f.args..., args...; f.kargs..., kargs...)
 
-symetrise(; cutoff_radius::Number) = Partial(symetrise;cutoff_radius) |> Lux.WrappedFunction
+function symetrise(; cutoff_radius::Number)
+    Partial(symetrise; cutoff_radius) |> Lux.WrappedFunction
+end
 
 """
 Encoding(n_dotₛ,n_Dₛ,cut_distance)
@@ -124,30 +128,30 @@ A lux layer which embed angular and radial `PreprocessData` into a feature vecto
 x_{ij} = (\\frac{1}{2} + \\frac{dot - dot_{si}}{4})^\\eta * \\exp(-\\zeta ~ ( \\frac{d_1 + d_2}{2} - D_{si} ) ) \\times cut(d_1) \\times cut(d_2) 
 ```
 """
-struct Encoding{T<:Number} <: Lux.AbstractExplicitLayer
+struct Encoding{T <: Number} <: Lux.AbstractExplicitLayer
     n_dotₛ::Int
     n_Dₛ::Int
     cut_distance::T
 end
 
 function Lux.initialparameters(::AbstractRNG, l::Encoding{T}) where {T}
-    (dotsₛ=reshape(collect(range(T(0), T(1); length=l.n_dotₛ)), 1, :),
-        Dₛ=reshape(collect(range(T(0), l.cut_distance; length=l.n_Dₛ)), :, 1),
-        η=ones(T, 1, 1) ./ l.n_dotₛ,
-        ζ=ones(T, 1, 1) ./ l.n_Dₛ)
+    (dotsₛ = reshape(collect(range(T(0), T(1); length = l.n_dotₛ)), 1, :),
+        Dₛ = reshape(collect(range(T(0), l.cut_distance; length = l.n_Dₛ)), :, 1),
+        η = ones(T, 1, 1) ./ l.n_dotₛ,
+        ζ = ones(T, 1, 1) ./ l.n_Dₛ)
 end
 Lux.initialstates(::AbstractRNG, l::Encoding) = (;)
 
 function mergedims(x::AbstractArray, dims::AbstractRange)
-    pre = size(x)[begin:(first(dims)-1)]
+    pre = size(x)[begin:(first(dims) - 1)]
     merged = size(x)[dims]
-    post = size(x)[(last(dims)+1):end]
+    post = size(x)[(last(dims) + 1):end]
     reshape(x, (pre..., prod(merged), post...))
 end
 
-function (l::Encoding{T})(input::PreprocessData{<:AbstractArray{T}},
-    (; dotsₛ, η, ζ, Dₛ),
-    st) where {T}
+function (l::Encoding{T})(input::PreprocessData{T},
+        (; dotsₛ, η, ζ, Dₛ),
+        st) where {T}
     (; dot, d_1, d_2, r_1, r_2) = input |> trace("input")
     encoded = ((2 .+ dot .- tanh.(dotsₛ)) ./ 4) .^ ζ .*
               exp.(-η .* ((d_1 .+ d_2) ./ 2 .- Dₛ) .^ 2) .*
@@ -159,16 +163,16 @@ function (l::Encoding{T})(input::PreprocessData{<:AbstractArray{T}},
     res |> trace("features"), st
 end
 
-function cut(cut_radius::T, r::T)::T where {T<:Number}
+function cut(cut_radius::T, r::T)::T where {T <: Number}
     ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
 end
 
-function preoprocessed_reshape(x::PreprocessData, arg::Union{Int,Colon}...)
+function preoprocessed_reshape(x::PreprocessData, arg::Union{Int, Colon}...)
     PreprocessData(map(fieldnames(PreprocessData)) do name
         reshape(getfield(x, name), arg...)
     end...)
 end
-preoprocessed_reshape(arg::Union{Int,Colon}...) = x -> preoprocessed_reshape(x, arg...)
+preoprocessed_reshape(arg::Union{Int, Colon}...) = x -> preoprocessed_reshape(x, arg...)
 
 function struct_stack(x::AbstractArray{PreprocessData{T}}) where {T}
     f(field) = reshape(getproperty.(x, field), 1, 1, size(x)...)
@@ -191,19 +195,31 @@ function ChainRulesCore.rrule(::typeof(trace), message, x)
     return y, trace_pullback
 end
 
-struct AnnotedKDTree{Type,Property,Subtype}
+struct AnnotedKDTree{Type, Property, Subtype}
     data::StructVector{Type}
     tree::KDTree{Subtype}
     function AnnotedKDTree(data::StructVector, property::StaticSymbol)
-        new{eltype(data),dynamic(property),
+        new{eltype(data), dynamic(property),
             eltype(getproperty(StructArrays.components(data), dynamic(property)))}(
-            data, KDTree(getproperty(data, dynamic(property)); reorder=false))
+            data, KDTree(getproperty(data, dynamic(property)); reorder = false))
     end
 end
 function select_neighboord(
-    point, (; data, tree)::AnnotedKDTree; cutoff_radius)
+        point, (; data, tree)::AnnotedKDTree; cutoff_radius)
     data[inrange(tree, point, cutoff_radius)]
 end
+
+struct PreprocessingLayer <: Lux.AbstractExplicitLayer
+    fun::Function
+end
+
+Lux.initialparameters(::AbstractRNG, ::PreprocessingLayer) = (;)
+Lux.initialstates(::AbstractRNG, ::PreprocessingLayer) = (;)
+(fun::PreprocessingLayer)(arg, _, st) = fun(arg), st
+((; fun)::PreprocessingLayer)(arg,) =
+    ignore_derivatives() do
+        fun(arg)
+    end
 # function ChainRulesCore.rrule(
 #         ::typeof(Base.getproperty), array::StructArray{T}, field::Symbol) where {T}
 #     member = getproperty(array, field)
