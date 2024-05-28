@@ -31,7 +31,7 @@ function angular_dense(; cutoff_radius::Float32 = 3.0f0)
     Lux.Chain(
         PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(),
-            trace("feature vector"), chain)), tanh_fast; name = "angular_dense")
+            chain)), tanh_fast; name = "angular_dense")
 end
 
 function deep_angular_dense(; cutoff_radius::Float32 = 3.0f0)

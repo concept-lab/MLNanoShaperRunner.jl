@@ -44,7 +44,10 @@ PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
     getindex.(x, f)
 end...)
 
-function preprocessing((; point, atoms)::ModelInput)
+function preprocessing((; point, atoms)::ModelInput{T}) where T
+    if length(atoms) == 0
+		return PreprocessData{T}[] |> StructVector
+    end
     prod = reduce(vcat, map(eachindex(atoms)) do i
         map(1:i) do j
             atoms[i], atoms[j]
@@ -69,16 +72,12 @@ end
     prepross
 end
 
-function (f::DeepSet)(set::AbstractVector{<:AbstractArray}, ps, st)
-    trace("input size", length(set))
-    sum(set) do arg
-        Lux.apply(f.prepross, arg, ps, st) |> first
-    end, st#/ sqrt(length(set)), st
+function (f::DeepSet)(set::AbstractVector, ps, st)
+	res = Lux.apply(f.prepross, set |> trace("set"), ps, st) |> first
+	sum(res), st
 end
 function (f::DeepSet)(arg::Batch, ps, st)
     lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
-    trace("input", arg)
-    trace("dims", size.(arg.field))
     batched = ignore_derivatives() do
         cat(arg.field...; dims = ndims(first(arg.field))) |> trace("batched")
     end
@@ -94,8 +93,10 @@ function symetrise((; dot, r_1, r_2, d_1, d_2)::StructArray{PreprocessData{T}};
           trace("unnormalized")
     res .* cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2) |> trace("symetrized")
 end
-# symetrise(x::StructVector{<:PreprocessData};cutoff_radius) = symetrise.(x;cutoff_radius) |>trace("symetrized") 
-#
+function symetrise(; cutoff_radius::Number)
+    Partial(symetrise; cutoff_radius) |> Lux.WrappedFunction
+end
+
 struct Partial{F <: Function, A <: Tuple, B <: Base.Pairs} <: Function
     f::F
     args::A
@@ -105,10 +106,6 @@ struct Partial{F <: Function, A <: Tuple, B <: Base.Pairs} <: Function
     end
 end
 (f::Partial)(args...; kargs...) = f.f(f.args..., args...; f.kargs..., kargs...)
-
-function symetrise(; cutoff_radius::Number)
-    Partial(symetrise; cutoff_radius) |> Lux.WrappedFunction
-end
 
 """
 Encoding(n_dotₛ,n_Dₛ,cut_distance)
@@ -166,7 +163,6 @@ function cut(cut_radius::T, r::T)::T where {T <: Number}
     ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
 end
 
-
 function struct_stack(x::AbstractArray{PreprocessData{T}}) where {T}
     f(field) = reshape(getproperty.(x, field), 1, 1, size(x)...)
     x = StructVector{PreprocessData{T}}(f.(fieldnames(PreprocessData))) |>
@@ -213,26 +209,3 @@ Lux.initialstates(::AbstractRNG, ::PreprocessingLayer) = (;)
     ignore_derivatives() do
         fun(arg)
     end
-# function ChainRulesCore.rrule(
-#         ::typeof(Base.getproperty), array::StructArray{T}, field::Symbol) where {T}
-#     member = getproperty(array, field)
-#     function getproperty_pullback(y_hat)
-#         (NoTangent(),
-#             StructArray(;
-#                 (f => if f == field
-#                      y_hat
-#                  else
-#                      zero(getproperty(array, f))
-#                  end
-#                 for f in propertynames(array))...),
-#             NoTangent()) |> trace("getproperty_pullback")
-#     end
-#     member, getproperty_pullback
-# end
-#
-# function ChainRulesCore.rrule(::Type{StructArray}, fields::Tuple)
-#     res = StructArray(fields)
-#     function StructArray_pullback(df)
-#     end
-#     res, StructArray_pullback
-# end
