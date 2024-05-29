@@ -44,9 +44,37 @@ PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
     getindex.(x, f)
 end...)
 
-function preprocessing((; point, atoms)::ModelInput{T}) where T
+struct Partial{F <: Function, A <: Tuple, B <: Base.Pairs} <: Function
+    f::F
+    args::A
+    kargs::B
+    function Partial(f, args...; kargs...)
+        new{typeof(f), typeof(args), typeof(kargs)}(f, args, kargs)
+    end
+end
+(f::Partial)(args...; kargs...) = f.f(f.args..., args...; f.kargs..., kargs...)
+
+@concrete struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
+    prepross
+end
+
+function (f::DeepSet)(set::AbstractArray, ps, st)
+	f(Batch([set]),ps,st)
+end
+function (f::DeepSet)(arg::Batch, ps, st)
+    lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
+    batched = ignore_derivatives() do
+        cat(arg.field...; dims = ndims(first(arg.field))) |> trace("batched")
+    end
+    res = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
+    mapreduce(hcat, 1:(length(lengths) - 1)) do i
+        sum(res[:, (lengths[i] + 1):lengths[i + 1]]; dims = 2)
+    end, st
+end
+
+function preprocessing((; point, atoms)::ModelInput{T}) where {T}
     if length(atoms) == 0
-		return PreprocessData{T}[] |> StructVector
+        return PreprocessData{T}[] |> StructVector
     end
     prod = reduce(vcat, map(eachindex(atoms)) do i
         map(1:i) do j
@@ -64,27 +92,8 @@ function preprocessing((; point, atoms)::ModelInput{T}) where T
         :)
 end
 
-function expand_dims(x::AbstractArray, n::Integer)
-    reshape(x, size(x)[begin:(n - 1)]..., n, size(x)[n:end]...)
-end
-
-@concrete struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
-    prepross
-end
-
-function (f::DeepSet)(set::AbstractVector, ps, st)
-	res = Lux.apply(f.prepross, set |> trace("set"), ps, st) |> first
-	sum(res), st
-end
-function (f::DeepSet)(arg::Batch, ps, st)
-    lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
-    batched = ignore_derivatives() do
-        cat(arg.field...; dims = ndims(first(arg.field))) |> trace("batched")
-    end
-    res = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
-    mapreduce(hcat, 1:(length(lengths) - 1)) do i
-        sum(res[:, (lengths[i] + 1):lengths[i + 1]]; dims = 2)
-    end, st
+function cut(cut_radius::T, r::T)::T where {T <: Number}
+    ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
 end
 
 function symetrise((; dot, r_1, r_2, d_1, d_2)::StructArray{PreprocessData{T}};
@@ -96,16 +105,10 @@ end
 function symetrise(; cutoff_radius::Number)
     Partial(symetrise; cutoff_radius) |> Lux.WrappedFunction
 end
-
-struct Partial{F <: Function, A <: Tuple, B <: Base.Pairs} <: Function
-    f::F
-    args::A
-    kargs::B
-    function Partial(f, args...; kargs...)
-        new{typeof(f), typeof(args), typeof(kargs)}(f, args, kargs)
-    end
+function expand_dims(x::AbstractArray, n::Integer)
+    reshape(x, size(x)[begin:(n - 1)]..., n, size(x)[n:end]...)
 end
-(f::Partial)(args...; kargs...) = f.f(f.args..., args...; f.kargs..., kargs...)
+
 
 """
 Encoding(n_dotₛ,n_Dₛ,cut_distance)
@@ -159,9 +162,6 @@ function (l::Encoding{T})(input::StructVector{PreprocessData{T}},
     res |> trace("features"), st
 end
 
-function cut(cut_radius::T, r::T)::T where {T <: Number}
-    ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
-end
 
 function struct_stack(x::AbstractArray{PreprocessData{T}}) where {T}
     f(field) = reshape(getproperty.(x, field), 1, 1, size(x)...)
