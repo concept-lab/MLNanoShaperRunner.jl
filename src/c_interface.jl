@@ -5,6 +5,7 @@ using GeometryBasics
 using MLNanoShaperRunner
 using StructArrays
 using LuxCore
+using Random
 
 """
 	state
@@ -15,12 +16,11 @@ Then you can call eval_model to get the field on a certain point.
 """
 Option{T} = Union{T,Nothing}
 mutable struct State
-    weights::Option{NamedTuple}
-	model::Option{Lux.AbstractExplicitLayer}
+    model::Option{Lux.StatefulLuxLayer}
     atoms::Option{AnnotedKDTree{Sphere{Float32},:center}}
     cutoff_radius::Float32
 end
-global_state = State(nothing, nothing, nothing, 3.0)
+global_state = State(nothing, nothing, 3.0)
 
 mutable struct CSphere
     x::Float32
@@ -28,12 +28,12 @@ mutable struct CSphere
     z::Float32
     r::Float32
 end
-CSphere((;center,r)::Sphere) = CSphere(center...,r)
+CSphere((; center, r)::Sphere) = CSphere(center..., r)
 
 """
-    load_weights(path::String)::Cint
+    load_model(path::String)::Cint
 
-Load the model `parameters` from a serialised training state at absolute path `path`.
+Load the model from a `MLNanoShaperRunner.SerializedModel` serialized state at absolute path `path`.
 
 # Return an error status:
 - 0: OK
@@ -41,18 +41,40 @@ Load the model `parameters` from a serialised training state at absolute path `p
 - 2: file could not be deserialized properly
 - 3: unknow error
 """
-function load_weights end
-Base.@ccallable function load_weights(path::Cstring)::Cint
+function load_model end
+"""
+	load_atoms(start::Ptr{CSphere},length::Cint)::Cint
+
+Load the atoms into the julia model.
+Start is a pointer to the start of the array of `CSphere` and `length` is the length of the array
+
+# Return an error status:
+- 0: OK
+- 1: data could not be read
+- 2: unknow error
+"""
+function load_atoms end
+
+"""
+    eval_model(x::Float32,y::Float32,z::Float32)::Float32
+
+evaluate the model at coordinates `x` `y` `z`.
+"""
+function eval_model end
+
+Base.@ccallable function load_model(path::Cstring)::Cint
     try
         if ispath(path)
-			@debug "deserializing"
+            @debug "deserializing"
             data = deserialize(path)
-			@debug "deserialized"
-            if typeof(data) <:NamedTuple 
-                global_state.weights = data
+            @debug "deserialized"
+            if typeof(data) <: SerializedModel
+                global_state.model = StatefulLuxLayer(data.model(), data.parameters,
+                    Lux.initialstates(MersenneTwister(42), data.model()))
+                global_state.cutoff_radius = get_cutoff_radius(global_state.model)
                 0
             else
-                @error "wrong type, expected Lux.Experimental.TrainState, got" typeof(data)
+                @error "wrong type, expected MLNanoShaperRunner.SerializedModel, got" typeof(data)
                 2
             end
         else
@@ -64,60 +86,26 @@ Base.@ccallable function load_weights(path::Cstring)::Cint
         3
     end
 end
-
-"""
-    load_atoms(start::Ptr{CSphere},length::Cint)::Cint
-
-Load the atoms into the julia model.
-Start is a pointer to the start of the array of `CSphere` and `length` is the length of the array
-
-# Return an error status:
-- 0: OK
-- 1: data could not be read
-- 2: unknow error
-"""
-function load_atoms end
 Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::Cint)::Cint
     try
-        global_state.atoms = AnnotedKDTree(Iterators.map(unsafe_wrap(
-            Array, start, length)) do (; x, y, z, r)
-            Sphere(Point3f(x, y, z), r)
-		end |>StructVector ,static(:center))
-		0
+        global_state.atoms = AnnotedKDTree(
+            Iterators.map(unsafe_wrap(
+                Array, start, length)) do (; x, y, z, r)
+                Sphere(Point3f(x, y, z), r)
+            end |> StructVector,
+            static(:center))
+        0
     catch err
         @error "error" err
         2
     end
 end
 
-"""
-    set_cutoff_radius(cutoff_radius::Float32)::Int
-
-Set the cutoff_radius value for inference.
-# Return an error status:
-- 0: OK
-- 1: formatting error
-"""
-function set_cutoff_radius end
-Base.@ccallable function set_cutoff_radius(cutoff_radius::Float32)::Cint
-    if cutoff_radius >= 0
-        global_state.cutoff_radius = cutoff_radius
-		global_state.model = angular_dense(;cutoff_radius)
-        0
-    else
-        1
-    end
-end
-
-"""
-    eval_model(x::Float32,y::Float32,z::Float32)::Float32
-
-evaluate the model at coordinates `x` `y` `z`.
-"""
-function eval_model end
 Base.@ccallable function eval_model(x::Float32, y::Float32, z::Float32)::Float32
     point = Point3f(x, y, z)
-	neighbors = select_neighboord(point,global_state.atoms;cutoff_radius = global_state.cutoff_radius)
-    LuxCore.stateless_apply(global_state.model, ModelInput(point, neighbors),
-        global_state.weights )
+    if distance(point, global_state.atoms.tree) >= global_state.cutoff_radius
+        0.0f0
+    else
+        only(model((Point3f(x), global_state.atoms))) - 0.5f0
+    end
 end

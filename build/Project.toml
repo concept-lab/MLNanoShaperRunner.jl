@@ -1,3 +1,4 @@
 [deps]
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 MLNanoShaperRunner = "0d104b66-282b-4c8e-a741-e32dba8f77f1"
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"

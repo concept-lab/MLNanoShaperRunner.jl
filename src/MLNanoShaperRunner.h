@@ -19,7 +19,7 @@ typedef struct {
  *- 3: unknow error
  */
 
-int load_weights(char* path);
+int load_model(char* path);
 /*
     load_atoms(start::Ptr{CSphere},length::Cint)::Cint
 
@@ -32,15 +32,6 @@ Start is a pointer to the start of the array of `CSphere` and `length` is the le
 - 2: unknow error
 */
 int load_atoms(Sphere* start,int length);
-/*
-    set_cutoff_radius(cutoff_radius::Float32)::Int
-
-Set the cutoff_radius value for inference.
-# Return an error status:
-- 0: OK
-- 1: formatting error
-*/
-int set_cutoff_radius(float cutoff_radius);
 /*
     eval_model(x::Float32,y::Float32,z::Float32)::Float32
 

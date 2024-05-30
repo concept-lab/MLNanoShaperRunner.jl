@@ -4,6 +4,15 @@ function select_and_preprocess((point, atoms); cutoff_radius)
     atoms = select_neighboord(point, atoms; cutoff_radius)
     preprocessing(ModelInput(point, atoms))
 end
+
+function evaluate_if_atoms_in_neighboord(layer,arg::AbstractArray,ps,st;zero_value)
+	if length(arg) == 0
+		zero_value
+	else
+		Lux.apply(layer,arg,ps,st)
+	end
+end
+
 """
     anakin()
 
@@ -66,3 +75,7 @@ struct SerializedModel
     model::Partial
     weights::NamedTuple
 end
+function get_cutoff_radius(x::Lux.AbstractExplicitLayer)
+    get_preprocessing(x).fun.kargs[:cutoff_radius]
+end
+get_cutoff_radius(x::Lux.StatefulLuxLayer) = get_cutoff_radius(x.model)
