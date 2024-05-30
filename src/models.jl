@@ -5,12 +5,12 @@ function select_and_preprocess((point, atoms); cutoff_radius)
     preprocessing(ModelInput(point, atoms))
 end
 
-function evaluate_if_atoms_in_neighboord(layer,arg::AbstractArray,ps,st;zero_value)
-	if length(arg) == 0
-		zero_value
-	else
-		Lux.apply(layer,arg,ps,st)
-	end
+function evaluate_if_atoms_in_neighboord(layer, arg::AbstractArray, ps, st; zero_value)
+    if length(arg) == 0
+        zero_value
+    else
+        Lux.apply(layer, arg, ps, st)
+    end
 end
 
 """
@@ -35,8 +35,7 @@ end
 
 function angular_dense(; cutoff_radius::Float32 = 3.0f0)
     chain = Chain(Dense(5 => 10, elu),
-        Dense(10 => 1, elu;
-            init_weight = Partial(glorot_uniform; gain = 1 / 25_0000)))
+        Dense(10 => 1, elu))
     Lux.Chain(
         PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(),
@@ -51,8 +50,7 @@ function deep_angular_dense(; cutoff_radius::Float32 = 3.0f0)
         DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(), chain)),
         Dense(10 => 30; use_bias = false),
         Dense(30 => 10, elu),
-        Dense(10 => 1, elu;
-            init_weight = Partial(glorot_uniform; gain = 1 / 25_0000)),
+        Dense(10 => 1, elu),
         tanh_fast;
         name = "deep_angular_dense")
 end
