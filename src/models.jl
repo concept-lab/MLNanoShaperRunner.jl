@@ -44,15 +44,28 @@ end
 
 function deep_angular_dense(; cutoff_radius::Float32 = 3.0f0)
     chain = Chain(
-        Dense(5 => 30; use_bias = false),
+        Dense(5 => 30,elu ),
         Dense(30 => 10, elu))
     Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(), chain)),
-        Dense(10 => 30; use_bias = false),
+        Dense(10 => 30,elu ),
         Dense(30 => 10, elu),
         Dense(10 => 1, elu),
         tanh_fast;
         name = "deep_angular_dense")
+end
+
+function medium_angular_dense(; cutoff_radius::Float32 = 3.0f0)
+    chain = Chain(
+        Dense(5 => 15,elu ),
+        Dense(15 => 10, elu))
+    Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
+        DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(), chain)),
+        Dense(10 => 5; use_bias = false),
+        Dense(5 => 10, elu),
+        Dense(10 => 1, elu),
+        tanh_fast;
+        name = "medium_angular_dense")
 end
 
 drop_preprocessing(x::Chain) =
