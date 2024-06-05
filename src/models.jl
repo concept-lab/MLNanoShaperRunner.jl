@@ -44,30 +44,53 @@ end
 
 function deep_angular_dense(; cutoff_radius::Float32 = 3.0f0)
     chain = Chain(
-        Dense(5 => 30,elu ),
+        Dense(5 => 30, elu),
         Dense(30 => 10, elu))
     Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(), chain)),
-        Dense(10 => 30,elu ),
+        Dense(10 => 30, elu),
         Dense(30 => 10, elu),
         Dense(10 => 1, elu),
         tanh_fast;
         name = "deep_angular_dense")
 end
 
-function medium_angular_dense(; cutoff_radius::Float32 = 3.0f0)
-    chain = Chain(
-        Dense(5 => 15,elu ),
-        Dense(15 => 10, elu))
+function general_angular_dense(main_chain, secondary_chain; name::String,
+        van_der_wal_channel = false, on_gpu = true, cutoff_radius::Float32 = 3.0f0)
+    main_chain = DeepSet(Chain(symetrise(; cutoff_radius),
+        on_gpu ? gpu_device() : NoOpLayer(), main_chain
+    ))
+    function add_van_der_wal_channel(main_chain)
+        Parallel(vcat,
+            main_chain,
+			WrappedFunction((x -> Float32.(x))∘is_in_van_der_val))
+    end
     Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
-        DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(), chain)),
-        Dense(10 => 5; use_bias = false),
-        Dense(5 => 10, elu),
-        Dense(10 => 1, elu),
+        main_chain |> (van_der_wal_channel ? add_van_der_wal_channel : identity),
+        secondary_chain,
         tanh_fast;
-        name = "medium_angular_dense")
+        name)
 end
 
+function light_angular_dense(; van_der_wal_channel = false, kargs...)
+    general_angular_dense(
+        Chain(Dense(5 => 10, elu),
+            Dense(10 => 5, elu)),
+        Chain(Dense(5 + van_der_wal_channel => 10, elu),
+            Dense(10 => 1, elu));
+        name = "light_angular_dense",
+        van_der_wal_channel, kargs...)
+end
+
+function medium_angular_dense(; van_der_wal_channel = false, kargs...)
+    general_angular_dense(Chain(
+            Dense(5 => 15, elu),
+            Dense(15 => 10, elu)),
+        Chain(
+            Dense(10 + van_der_wal_channel => 5; use_bias = false),
+            Dense(5 => 10, elu),
+            Dense(10 => 1, elu)); name = "medium_angular_dense", van_der_wal_channel, kargs...)
+end
 drop_preprocessing(x::Chain) =
     if typeof(x[1]) <: PreprocessingLayer
         Chain(NoOpLayer(), x[2:end])
