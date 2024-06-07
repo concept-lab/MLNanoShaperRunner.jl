@@ -72,6 +72,16 @@ function general_angular_dense(main_chain, secondary_chain; name::String,
         name)
 end
 
+function tiny_angular_dense(; van_der_wal_channel = false, kargs...)
+    general_angular_dense(
+        Chain(Dense(5 => 7, elu),
+            Dense(7 => 4, elu)),
+        Chain(Dense(4 + van_der_wal_channel => 6, elu),
+            Dense(6 => 1, elu));
+        name = "tiny_angular_dense",
+        van_der_wal_channel, kargs...)
+end
+
 function light_angular_dense(; van_der_wal_channel = false, kargs...)
     general_angular_dense(
         Chain(Dense(5 => 10, elu),
