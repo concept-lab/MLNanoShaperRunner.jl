@@ -63,43 +63,49 @@ function general_angular_dense(main_chain, secondary_chain; name::String,
     function add_van_der_wal_channel(main_chain)
         Parallel(vcat,
             main_chain,
-			WrappedFunction((x -> Float32.(x))∘is_in_van_der_val))
+            WrappedFunction((x -> Float32.(x)) ∘ is_in_van_der_val))
     end
     Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         main_chain |> (van_der_wal_channel ? add_van_der_wal_channel : identity),
         secondary_chain,
-        tanh_fast;
         name)
 end
 
-function tiny_angular_dense(; van_der_wal_channel = false, kargs...)
+function tiny_angular_dense(; categorical = false, van_der_wal_channel = false, kargs...)
     general_angular_dense(
         Chain(Dense(5 => 7, elu),
             Dense(7 => 4, elu)),
         Chain(Dense(4 + van_der_wal_channel => 6, elu),
-            Dense(6 => 1, elu));
-        name = "tiny_angular_dense",
+            Dense(6 => 1, categorical ? identity : tanh_fast));
+        name = "tiny_angular_dense_" * (categorical ? "c" : "") *
+               (van_der_wal_channel ? "v" : ""),
         van_der_wal_channel, kargs...)
 end
 
-function light_angular_dense(; van_der_wal_channel = false, kargs...)
+function light_angular_dense(; categorical = false, van_der_wal_channel = false, kargs...)
     general_angular_dense(
         Chain(Dense(5 => 10, elu),
             Dense(10 => 5, elu)),
         Chain(Dense(5 + van_der_wal_channel => 10, elu),
-            Dense(10 => 1, elu));
-        name = "light_angular_dense",
+            Dense(10 => 1, categorical ? identity : tanh_fast));
+        name = "light_angular_dense" * (categorical ? "c" : "") *
+               (van_der_wal_channel ? "v" : ""),
         van_der_wal_channel, kargs...)
 end
 
-function medium_angular_dense(; van_der_wal_channel = false, kargs...)
+function medium_angular_dense(; categorical = false, van_der_wal_channel = false, kargs...)
     general_angular_dense(Chain(
             Dense(5 => 15, elu),
             Dense(15 => 10, elu)),
         Chain(
             Dense(10 + van_der_wal_channel => 5; use_bias = false),
             Dense(5 => 10, elu),
-            Dense(10 => 1, elu)); name = "medium_angular_dense", van_der_wal_channel, kargs...)
+            Dense(10 => 1, categorical ? identity : tanh_fast));
+        name = "medium_angular_dense" *
+               (categorical ? "c" : "") *
+               (van_der_wal_channel ? "v" : ""),
+        van_der_wal_channel,
+        kargs...)
 end
 drop_preprocessing(x::Chain) =
     if typeof(x[1]) <: PreprocessingLayer
