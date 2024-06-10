@@ -67,7 +67,7 @@ function general_angular_dense(main_chain, secondary_chain; name::String,
     end
     Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         main_chain |> (van_der_wal_channel ? add_van_der_wal_channel : identity),
-        secondary_chain,
+        secondary_chain;
         name)
 end
 
