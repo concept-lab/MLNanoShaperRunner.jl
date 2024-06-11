@@ -88,7 +88,7 @@ function light_angular_dense(; categorical = false, van_der_wal_channel = false,
             Dense(10 => 5, elu)),
         Chain(Dense(5 + van_der_wal_channel => 10, elu),
             Dense(10 => 1, categorical ? identity : tanh_fast));
-        name = "light_angular_dense" * (categorical ? "c" : "") *
+        name = "light_angular_dense_" * (categorical ? "c" : "") *
                (van_der_wal_channel ? "v" : ""),
         van_der_wal_channel, kargs...)
 end
@@ -101,7 +101,7 @@ function medium_angular_dense(; categorical = false, van_der_wal_channel = false
             Dense(10 + van_der_wal_channel => 5; use_bias = false),
             Dense(5 => 10, elu),
             Dense(10 => 1, categorical ? identity : tanh_fast));
-        name = "medium_angular_dense" *
+        name = "medium_angular_dense_" *
                (categorical ? "c" : "") *
                (van_der_wal_channel ? "v" : ""),
         van_der_wal_channel,
