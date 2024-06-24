@@ -71,7 +71,7 @@ end
 
 params = "$( dirname(dirname(@__FILE__)))/param/param.toml"
 
-function extract_balls(T::Type{<:Number}, prot::ProteinStructure)
+function extract_balls(T::Type{<:Number}, prot::MolecularStructure)
     radii = TOML.parsefile(params)["atoms"]["radius"] |> Dict{String, T}
     reduce(prot, 4) do atom
         if typeof(atom) == Atom
