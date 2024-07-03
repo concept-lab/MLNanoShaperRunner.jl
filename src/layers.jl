@@ -69,7 +69,7 @@ function (f::DeepSet)(arg::Batch, ps, st)
     batched = ignore_derivatives() do
         cat(arg.field...; dims=ndims(first(arg.field))) |> trace("batched")
     end
-	res::Matrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
+	res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
 	@assert size(res,2) == last(lengths)
     mapreduce(hcat, 1:(length(lengths)-1)) do i
         sum(res[:, (lengths[i]+1):lengths[i+1]]; dims=2)
@@ -164,7 +164,7 @@ function (l::Encoding{T})(input::StructVector{PreprocessData{T}},
               exp.(-η .* ((d_1 .+ d_2) ./ 2 .- Dₛ) .^ 2) .*
               cut.(l.cut_distance, d_1) .*
               cut.(l.cut_distance, d_2)
-    res::Matrix{<:Number} = vcat(map((encoded, (r_1 .+ r_2) ./ 2, abs.(r_1 .- r_2))) do x
+    res::AbstractMatrix{<:Number} = vcat(map((encoded, (r_1 .+ r_2) ./ 2, abs.(r_1 .- r_2))) do x
         mergedims(x, 1:2)
     end...)
     res |> trace("features"), st
