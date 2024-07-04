@@ -207,8 +207,9 @@ struct AnnotedKDTree{Type,Property,Subtype}
     end
 end
 
+
 function select_neighboord(
-    point, (; data, tree)::AnnotedKDTree; cutoff_radius)
+    point::Point, (; data, tree)::AnnotedKDTree; cutoff_radius)
     data[inrange(tree, point, cutoff_radius)]
 end
 
