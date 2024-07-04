@@ -2,7 +2,7 @@ using Lux
 
 select_and_preprocess((point, atoms); cutoff_radius) =select_and_preprocess(point,atoms;cutoff_radius)
 function select_and_preprocess(point::Batch, atoms; cutoff_radius)
-	Batch(select_and_preprocess.(point,Ref(atoms);cutoff_radius))
+	Batch(select_and_preprocess.(point.field,Ref(atoms);cutoff_radius))
 end
 function select_and_preprocess(point::Point, atoms; cutoff_radius)
     atoms = select_neighboord(point, atoms; cutoff_radius)
