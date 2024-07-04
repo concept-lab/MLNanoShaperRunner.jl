@@ -9,6 +9,7 @@ using StructArrays
 using Distances
 using ChainRulesCore
 using Statistics
+using Folds
 using Static
 
 function terse end
@@ -67,10 +68,12 @@ end
 function (f::DeepSet)(arg::Batch, ps, st)
     lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
     batched = ignore_derivatives() do
-        cat(arg.field...; dims=ndims(first(arg.field))) |> trace("batched")
+        Folds.reduce(arg.field) do x, y
+            cat(x, y; dims=ndims(first(arg.field)))
+        end |> trace("batched")
     end
-	res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
-	@assert size(res,2) == last(lengths)
+    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
+    @assert size(res, 2) == last(lengths)
     mapreduce(hcat, 1:(length(lengths)-1)) do i
         sum(res[:, (lengths[i]+1):lengths[i+1]]; dims=2)
     end, st
