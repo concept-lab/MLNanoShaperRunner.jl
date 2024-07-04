@@ -73,7 +73,7 @@ function (f::DeepSet)(arg::Batch, ps, st)
             arg.field |> first |> eltype,
 			(size(arg.field |> first)[begin:end-1]...,  last(lengths)))
 		Folds.foreach(lengths[begin:end-1] |>eachindex) do i 
-			batched[fill(:, ndims(arg.field |> first) - 1)..., (length[i]+1:lengths[i+1])] = arg.field[i]
+			batched[fill(:, ndims(arg.field |> first) - 1)..., (lengths[i]+1:lengths[i+1])] = arg.field[i]
         end
         batched |> trace("batched")
     end
