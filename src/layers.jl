@@ -70,7 +70,7 @@ function (f::DeepSet)(arg::Batch, ps, st)
     batched = ignore_derivatives() do
 		batched = similar(arg.field |> last,dims = (arg.field[begin:end-1]...,size.(arg.field,arg.field|>first|>ndims) |> sum))
 		Folds.map(size.(arg.field,arg.field|>first|>ndims) |> cumsum |>enumerate) do (i,offset)
-			batched[...,offset] = arg.field[i]
+			batched[fill(:,arg.field |>first |> ndims - 1)...,offset] = arg.field[i]
         end
 		batched |> trace("batched")
     end
