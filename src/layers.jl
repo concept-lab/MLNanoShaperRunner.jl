@@ -68,9 +68,11 @@ end
 function (f::DeepSet)(arg::Batch, ps, st)
     lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
     batched = ignore_derivatives() do
-        Folds.reduce(arg.field) do x, y
-            cat(x, y; dims=ndims(first(arg.field)))
-        end |> trace("batched")
+		batched = similar(arg.field |> last,dims = (arg.field[begin:end-1]...,size.(arg.field,arg.field|>first|>ndims) |> sum))
+		Folds.map(size.(arg.field,arg.field|>first|>ndims) |> cumsum |>enumerate) do (i,offset)
+			batched[...,offset] = arg.field[i]
+        end
+		batched |> trace("batched")
     end
     res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
     @assert size(res, 2) == last(lengths)
