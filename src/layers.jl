@@ -73,7 +73,7 @@ function (f::DeepSet)(arg::Batch, ps, st)
             arg.field |> first |> eltype,
 			(size(arg.field |> first)[begin:end-1]..., size.(arg.field, arg.field |> first |> ndims) |> sum))
         Folds.map(size.(arg.field, arg.field |> first |> ndims) |> cumsum |> enumerate) do (i, offset)
-            batched[fill(:, arg.field |> first |> ndims - 1)..., offset] = arg.field[i]
+			batched[fill(:, ndims(arg.field |> first) - 1)..., offset] = arg.field[i]
         end
         batched |> trace("batched")
     end
