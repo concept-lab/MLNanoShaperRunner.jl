@@ -61,27 +61,51 @@ Adapt.@adapt_structure Partial
 @concrete terse struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
     prepross
 end
+function alloc_concatenated(sub_array,l)
+	similar(
+            sub_array,
+            sub_array |> eltype,
+			(size(sub_array)[begin:end-1]...,  l))
+end
+function evaluate_and_cat(arrays,n::Int,sub_array,get_slice)
+	indexes=1:n
+	res = alloc_concatenated(sub_array , get_slice(n) |> last)
+	Folds.foreach(indexes) do i 
+		 res[fill(:, ndims(sub_array) - 1)..., get_slice(i)] = arrays(i)
+	end
+	res
+end
 
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
-function (f::DeepSet)(arg::Batch, ps, st)
+function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
     lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
-    batched = ignore_derivatives() do
-        batched = similar(
-            arg.field |> first,
-            arg.field |> first |> eltype,
-			(size(arg.field |> first)[begin:end-1]...,  last(lengths)))
-		Folds.foreach(lengths[begin:end-1] |>eachindex) do i 
-			batched[fill(:, ndims(arg.field |> first) - 1)..., (lengths[i]+1:lengths[i+1])] = arg.field[i]
-        end
-        batched |> trace("batched")
-    end
+	get_slice(i) =  (lengths[i]+1:lengths[i+1])
+    batched = evaluate_and_cat(length(arg.field),arg.field|> first,get_slice) do i
+		arg.field[i]
+	end
     res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
     @assert size(res, 2) == last(lengths)
-    mapreduce(hcat, 1:(length(lengths)-1)) do i
-        sum(res[:, (lengths[i]+1):lengths[i+1]]; dims=2)
-    end, st
+	sub_array = @view res[:,(lengths[1]+1):lengths[2]]
+	evaluate_and_cat(length(arg.field),sub_array,i -> i:i)do i
+		sum(@view res[fill(:, ndims(sub_array) - 1)..., get_slice(i)]; dims=ndims(sub_array))
+	end, st
+end
+
+function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(evaluate_and_cat), arrays, n::Int,sub_array,get_slice)
+	indexes=1:n
+	res = alloc_concatenated(sub_array , get_slice(n) |> last)
+	pullbacks = Array{Function}(undef,n)
+	Folds.foreach(indexes) do i 
+		res[fill(:, ndims(sub_array) - 1)..., get_slice(i)],pullbacks[i] =  rrule_via_ad(config,arrays,i)
+	end
+	function pullback_evaluate_and_cat(dres)
+		map(indexes) do i
+			pullbacks[i](dres[fill(:, ndims(sub_array) - 1)..., get_slice(i)])
+		end,NoTangent(),NoTangent(),NoTangent(),NoTangent()
+	end
+		res,pullback_evaluate_and_cat
 end
 
 function preprocessing((; point, atoms)::ModelInput{T}) where {T}
