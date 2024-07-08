@@ -62,7 +62,7 @@ end
 function general_angular_dense(main_chain, secondary_chain; name::String,
     van_der_wal_channel=false, on_gpu=true, cutoff_radius::Float32=3.0f0)
     main_chain = DeepSet(Chain(symetrise(; cutoff_radius),
-        on_gpu ? gpu_device() : NoOpLayer(), Parallel((.*), main_chain, Lux.WrappedFunction(scale_factor))
+        on_gpu ? gpu_device() : NoOpLayer(), main_chain 
     ))
     function add_van_der_wal_channel(main_chain)
         Parallel(vcat,
@@ -77,7 +77,7 @@ end
 
 function tiny_angular_dense(; categorical=false, van_der_wal_channel=false, kargs...)
     general_angular_dense(
-        Chain(Dense(6 => 7, elu),
+        Chain(Dense(5 => 7, elu),
             Dense(7 => 4, elu)),
         Chain(Dense(4 + van_der_wal_channel => 6, elu),
             Dense(6 => 1, categorical ? identity : tanh_fast));
@@ -88,7 +88,7 @@ end
 
 function light_angular_dense(; categorical=false, van_der_wal_channel=false, kargs...)
     general_angular_dense(
-        Chain(Dense(6 => 10, elu),
+        Chain(Dense(5 => 10, elu),
             Dense(10 => 5, elu)),
         Chain(Dense(5 + van_der_wal_channel => 10, elu),
             Dense(10 => 1, categorical ? identity : tanh_fast));
@@ -99,7 +99,7 @@ end
 
 function medium_angular_dense(; categorical=false, van_der_wal_channel=false, kargs...)
     general_angular_dense(Chain(
-            Dense(6 => 15, elu),
+            Dense(5 => 15, elu),
             Dense(15 => 10, elu)),
         Chain(
             Dense(10 + van_der_wal_channel => 5; use_bias=false),
