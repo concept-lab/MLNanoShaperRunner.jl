@@ -70,7 +70,7 @@ end
 function evaluate_and_cat(arrays,n::Int,sub_array,get_slice)
 	indexes=1:n
 	res = alloc_concatenated(sub_array , get_slice(n) |> last)
-	Folds.foreach(indexes) do i 
+	foreach(indexes) do i 
 		 res[fill(:, ndims(sub_array) - 1)..., get_slice(i)] = arrays(i)
 	end
 	res
