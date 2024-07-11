@@ -97,7 +97,7 @@ function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(eva
 	indexes=1:n
 	res = alloc_concatenated(sub_array , get_slice(n) |> last)
 	pullbacks = Array{Function}(undef,n)
-	Folds.foreach(indexes) do i 
+	foreach(indexes) do i 
 		res[fill(:, ndims(sub_array) - 1)..., get_slice(i)],pullbacks[i] =  rrule_via_ad(config,arrays,i)
 	end
 	function pullback_evaluate_and_cat(dres)
