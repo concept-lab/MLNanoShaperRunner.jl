@@ -108,6 +108,12 @@ function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(eva
 		res,pullback_evaluate_and_cat
 end
 
+function preprocessing((; point, atoms)::Tuple{Batch{Point3{T}},StructVector{Sphere{T}}}) where {T}
+	Folds.map(point) do point
+		preprocessing(ModelInput(point,atoms))
+	end |> Batch
+end
+
 function preprocessing((; point, atoms)::ModelInput{T}) where {T}
     if length(atoms) == 0
         return PreprocessData{T}[] |> StructVector
