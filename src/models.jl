@@ -79,7 +79,7 @@ function tiny_angular_dense(; categorical=false, van_der_wal_channel=false, karg
     general_angular_dense(
         Chain(Dense(5 => 7, elu),
             Dense(7 => 4, elu)),
-        Chain(Dense(4 + van_der_wal_channel => 6, elu),
+		Chain(BatchNorm(4 + van_der_wal_channel),Dense(4 + van_der_wal_channel => 6, elu),
             Dense(6 => 1, categorical ? identity : tanh_fast));
         name="tiny_angular_dense_" * (categorical ? "c" : "") *
              (van_der_wal_channel ? "v" : ""),
@@ -90,7 +90,7 @@ function light_angular_dense(; categorical=false, van_der_wal_channel=false, kar
     general_angular_dense(
         Chain(Dense(5 => 10, elu),
             Dense(10 => 5, elu)),
-        Chain(Dense(5 + van_der_wal_channel => 10, elu),
+        Chain(BatchNorm(5 + van_der_wal_channel),Dense(5 + van_der_wal_channel => 10, elu),
             Dense(10 => 1, categorical ? identity : tanh_fast));
         name="light_angular_dense_" * (categorical ? "c" : "") *
              (van_der_wal_channel ? "v" : ""),
@@ -102,7 +102,7 @@ function medium_angular_dense(; categorical=false, van_der_wal_channel=false, ka
             Dense(5 => 15, elu),
             Dense(15 => 10, elu)),
         Chain(
-            Dense(10 + van_der_wal_channel => 5; use_bias=false),
+            Dense(BatchNorm(10 + van_der_wal_channel),10 + van_der_wal_channel => 5; use_bias=false),
             Dense(5 => 10, elu),
             Dense(10 => 1, categorical ? identity : tanh_fast));
         name="medium_angular_dense_" *

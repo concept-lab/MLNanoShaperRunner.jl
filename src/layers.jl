@@ -11,6 +11,7 @@ using ChainRulesCore
 using Statistics
 using Folds
 using Static
+using CUDA
 
 function terse end
 struct Batch{T<:Vector}
@@ -61,77 +62,134 @@ Adapt.@adapt_structure Partial
 @concrete terse struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
     prepross
 end
-function alloc_concatenated(sub_array,l)
-	similar(
-            sub_array,
-            sub_array |> eltype,
-			(size(sub_array)[begin:end-1]...,  l))
+function alloc_concatenated(sub_array, l)
+    similar(
+        sub_array,
+        sub_array |> eltype,
+        (size(sub_array)[begin:end-1]..., l))
 end
-function evaluate_and_cat(arrays,n::Int,sub_array,get_slice)
-	indexes=1:n
-	res = alloc_concatenated(sub_array , get_slice(n) |> last)
-	foreach(indexes) do i 
-		 res[fill(:, ndims(sub_array) - 1)..., get_slice(i)] = arrays(i)
-	end
-	res
+function evaluate_and_cat(arrays, n::Int, sub_array, get_slice)
+    indexes = 1:n
+    res = alloc_concatenated(sub_array, get_slice(n) |> last)
+    foreach(indexes) do i
+        res[fill(:, ndims(sub_array) - 1)..., get_slice(i)] = arrays(i)
+    end
+    res
 end
 
+function _kernel_sum!(a::CuDeviceMatrix{T}, b::CuDeviceMatrix{T}, nb_elements::CuDeviceVector{Int}) where {T}
+    nb_lines = size(b, 1)
+    identifiant = threadIdx().x + blockDim().x * blockIdx().x
+    i, n = identifiant % nb_lines + 1, identifiant ÷ nb_lines + 1
+    if n + 1 > length(nb_elements)
+        # we are launching mor threads than required
+        return
+    end
+    a[i, n] = zero(T)
+    for j in (nb_elements[n]+1):nb_elements[n+1]
+        a[i, n] += b[i, j]
+    end
+end
+
+function batched_sum!(a::AbstractMatrix{T}, b::AbstractMatrix{T}, nb_elements::AbstractVector{Int}) where {T}
+    nb_lines = size(b, 1)
+    Folds.foreach(1:length(a)) do identifiant
+        i, n = identifiant % nb_lines + 1, identifiant ÷ nb_lines + 1
+        if n + 1 > length(nb_elements)
+            # we are launching mor threads than required
+            return
+        end
+        a[i, n] = zero(T)
+        for j in (nb_elements[n]+1):nb_elements[n+1]
+            a[i, n] += b[i, j]
+        end
+    end
+end
+function batched_sum(b::AbstractMatrix,nb_elements::AbstractVector)
+	a = similar(b,dims=(size(b,1),length(nb_elements)-1))
+	batched_sum!(a,b,nb_elements)
+	a
+end
+
+function ChainRulesCore.rrule(::typeof(batched_sum),b::AbstractMatrix,nb_elements)
+	res = batched_sum(b,nb_elements)
+	function batched_sum_pullback(delta)
+		delta_b = similar(b)	
+		foreach(eachindex(nb_elements)) do i
+			delta_b[(nb_elements[i]+1):nb_elements[i+1]] = delta[i]
+		end
+		NoTangent(),delta_b,NoTangent()
+	end
+	res,batched_sum_pullback
+end
+
+function batched_sum!(a::CuMatrix, b::CuMatrix, nb_elements::CuVector{Int})
+    nb_computations = size(b, 1) * (length(nb_elements) - 1)
+    block_size = 1024
+    @cuda threads = block_sizeblocks = (1 + (nb_computations - 1) ÷ block_size) _kernel_sum!(a, b, nb_elements)
+end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
 function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
     lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
-	get_slice(i) =  (lengths[i]+1:lengths[i+1])
-    batched = evaluate_and_cat(length(arg.field),arg.field|> first,get_slice) do i
-		arg.field[i]
-	end
+    get_slice(i) = (lengths[i]+1:lengths[i+1])
+    batched = evaluate_and_cat(length(arg.field), arg.field |> first, get_slice) do i
+        arg.field[i]
+    end
     res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
     @assert size(res, 2) == last(lengths)
-	sub_array = @view res[:,(lengths[1]+1):lengths[2]]
-	evaluate_and_cat(length(arg.field),sub_array,i -> i:i)do i
-		sum(@view res[fill(:, ndims(sub_array) - 1)..., get_slice(i)]; dims=ndims(sub_array))
-	end, st
+    sub_array = @view res[:, (lengths[1]+1):lengths[2]]
+    evaluate_and_cat(length(arg.field), sub_array, i -> i:i) do i
+        sum(@view res[fill(:, ndims(sub_array) - 1)..., get_slice(i)]; dims=ndims(sub_array))
+    end, st
 end
 
-function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(evaluate_and_cat), arrays, n::Int,sub_array,get_slice)
-	indexes=1:n
-	res = alloc_concatenated(sub_array , get_slice(n) |> last)
-	pullbacks = Array{Function}(undef,n)
-	foreach(indexes) do i 
-		res[fill(:, ndims(sub_array) - 1)..., get_slice(i)],pullbacks[i] =  rrule_via_ad(config,arrays,i)
-	end
-	function pullback_evaluate_and_cat(dres)
-		map(indexes) do i
-			pullbacks[i](dres[fill(:, ndims(sub_array) - 1)..., get_slice(i)])
-		end,NoTangent(),NoTangent(),NoTangent(),NoTangent()
-	end
-		res,pullback_evaluate_and_cat
+function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(evaluate_and_cat), arrays, n::Int, sub_array, get_slice)
+    indexes = 1:n
+    res = alloc_concatenated(sub_array, get_slice(n) |> last)
+    pullbacks = Array{Function}(undef, n)
+    foreach(indexes) do i
+        res[fill(:, ndims(sub_array) - 1)..., get_slice(i)], pullbacks[i] = rrule_via_ad(config, arrays, i)
+    end
+    function pullback_evaluate_and_cat(dres)
+        map(indexes) do i
+            pullbacks[i](dres[fill(:, ndims(sub_array) - 1)..., get_slice(i)])
+        end, NoTangent(), NoTangent(), NoTangent(), NoTangent()
+    end
+    res, pullback_evaluate_and_cat
 end
 
-function preprocessing((; point, atoms)::Tuple{Batch{Point3{T}},StructVector{Sphere{T}}}) where {T}
-	Folds.map(point) do point
-		preprocessing(ModelInput(point,atoms))
-	end |> Batch
+function make_id_product(f, n)
+    MallocArray(Int, 2, n * (n + 1) ÷ 2) do m
+        a = view(m, 1, :)
+        b = view(m, 2, :)
+        _make_id_product!(a, b, n)
+        f(a, b)
+    end
 end
 
 function preprocessing((; point, atoms)::ModelInput{T}) where {T}
-    if length(atoms) == 0
-        return PreprocessData{T}[] |> StructVector
-    end
-    prod = reduce(vcat, map(eachindex(atoms)) do i
-        map(1:i) do j
-            atoms[i], atoms[j]
+    (; r, center) = atoms
+    make_id_product(length(atoms)) do prod_1, prod_2
+        n_tot = length(prod_1)
+        distances = euclidean.(Ref(point), center)
+        d_1 = distances[prod_1]
+        r_1 = r[prod_1]
+        d_2 = distances[prod_2]
+        r_2 = r[prod_2]
+        dot = map(1:n_tot) do n
+            (center[prod_1[n]] - point) ⋅ (center[prod_2[n]] - point) / (d_1[n] * d_2[n] + 1.0f-8)
         end
-    end)
-    reshape(
-        map(prod) do (atom1, atom2)::Tuple{Sphere,Sphere}
-            d_1 = euclidean(point, atom1.center)
-            d_2 = euclidean(point, atom2.center)
-            dot = (atom1.center - point) ⋅ (atom2.center - point) / (d_1 * d_2 + 1.0f-8)
-            PreprocessData(dot, atom1.r, atom2.r, d_1, d_2)
-        end |> StructVector,
-        1,
-        :)
+        res = StructArray{PreprocessData{T}}((dot, r_1, r_2, d_1, d_2))
+        reshape(res, 1, :)
+    end
+end
+
+function preprocessing((; point, atoms)::Tuple{Batch{Point3{T}},StructVector{Sphere{T}}}) where {T}
+    Folds.map(point) do point
+        preprocessing(ModelInput(point, atoms))
+    end |> Batch
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
@@ -143,8 +201,8 @@ function symetrise((; dot, r_1, r_2, d_1, d_2)::StructArray{PreprocessData{T}};
     vcat(dot,
         r_1 .+ r_2,
         abs.(r_1 .- r_2),
-		d_1 .+ d_2, abs.(d_1 .- d_2)) .*
-        cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
+        d_1 .+ d_2, abs.(d_1 .- d_2)) .*
+    cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
 scale_factor(x) = x[end:end, :]
 
