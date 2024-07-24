@@ -80,7 +80,7 @@ end
 
 function _kernel_sum!(a::CuDeviceMatrix{T}, b::CuDeviceMatrix{T}, nb_elements::CuDeviceVector{Int}) where {T}
     nb_lines = size(b, 1)
-    identifiant = threadIdx().x + blockDim().x * blockIdx().x
+	identifiant = (threadIdx().x -1) + blockDim().x * (blockIdx().x -1)
     i, n = identifiant % nb_lines + 1, identifiant ÷ nb_lines + 1
     if n + 1 > length(nb_elements)
         # we are launching mor threads than required
