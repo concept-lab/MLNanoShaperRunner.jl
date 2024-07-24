@@ -108,7 +108,6 @@ function batched_sum!(a::AbstractMatrix{T}, b::AbstractMatrix{T}, nb_elements::A
         end
         a[i, n] = zero(T)
         for j in (nb_elements[n]+1):nb_elements[n+1]
-		@info "ids" i n j
             a[i, n] += b[i, j]
         end
     end
@@ -141,11 +140,15 @@ function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(eva
 end
 function ChainRulesCore.rrule(::typeof(batched_sum),b::AbstractMatrix,nb_elements)
 	res = batched_sum(b,nb_elements)
-	function batched_sum_pullback(delta)
-		delta_b = similar(b)	
-		foreach(eachindex(nb_elements)) do i
-			delta_b[(nb_elements[i]+1):nb_elements[i+1]] = delta[i]
+	function batched_sum_pullback(delta)::Tuple{NoTangent,Any,NoTangent}
+		delta_b = @thunk begin
+			delta_b = similar(b)	
+			foreach(minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements))-1 )) do i
+				delta_b[:,(nb_elements[i]+1):nb_elements[i+1]] .= delta[:,i]
+			end
+			delta_b
 		end
+
 		NoTangent(),delta_b,NoTangent()
 	end
 	res,batched_sum_pullback
