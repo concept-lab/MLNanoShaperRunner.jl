@@ -92,17 +92,23 @@ function _kernel_sum!(a::CuDeviceMatrix{T}, b::CuDeviceMatrix{T}, nb_elements::C
     end
 end
 
+function batched_sum!(a::CuMatrix, b::CuMatrix, nb_elements::CuVector{Int})
+    nb_computations = size(b, 1) * (length(nb_elements) - 1)
+    block_size = 1024
+    @cuda threads = block_size blocks = (1 + (nb_computations - 1) ÷ block_size) _kernel_sum!(a, b, nb_elements)
+end
+
 function batched_sum!(a::AbstractMatrix{T}, b::AbstractMatrix{T}, nb_elements::AbstractVector{Int}) where {T}
     nb_lines = size(b, 1)
 	Folds.foreach(0:(length(a)-1)) do identifiant
         i, n = identifiant % nb_lines + 1, identifiant ÷ nb_lines + 1
-		@info "ids" i n
         if n + 1 > length(nb_elements)
             # we are launching mor threads than required
             return
         end
         a[i, n] = zero(T)
         for j in (nb_elements[n]+1):nb_elements[n+1]
+		@info "ids" i n j
             a[i, n] += b[i, j]
         end
     end
@@ -119,9 +125,6 @@ function batched_sum(b::CuMatrix,nb_elements::AbstractVector)
 	a
 end
 
-# ╔═╡ 48bd4a94-48f3-4f40-869e-dee0bf0c52ee
-
-# ╔═╡ f560fd11-65a0-4252-a8e0-c1bcf0e2fa3b
 function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(evaluate_and_cat), arrays, n::Int,sub_array,get_slice)
 	indexes=1:n
 	res = alloc_concatenated(sub_array , get_slice(n) |> last)
@@ -157,11 +160,6 @@ function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
     res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
     @assert size(res, 2) == last(lengths)
 	batched_sum(res,lengths), st
-end
-function batched_sum!(a::CuMatrix, b::CuMatrix, nb_elements::CuVector{Int})
-    nb_computations = size(b, 1) * (length(nb_elements) - 1)
-    block_size = 1024
-    @cuda threads = block_sizeblocks = (1 + (nb_computations - 1) ÷ block_size) _kernel_sum!(a, b, nb_elements)
 end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
