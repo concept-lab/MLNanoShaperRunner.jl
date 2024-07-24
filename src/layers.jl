@@ -68,13 +68,14 @@ function alloc_concatenated(sub_array, l)
         sub_array |> eltype,
         (size(sub_array)[begin:end-1]..., l))
 end
-function evaluate_and_cat(arrays, n::Int, sub_array, get_slice)
-    indexes = 1:n
-    res = alloc_concatenated(sub_array, get_slice(n) |> last)
-    foreach(indexes) do i
-        res[fill(:, ndims(sub_array) - 1)..., get_slice(i)] = arrays(i)
-    end
-    res
+
+function evaluate_and_cat(arrays,n::Int,sub_array,get_slice)
+	indexes=1:n
+	res = alloc_concatenated(sub_array , get_slice(n) |> last)
+	foreach(indexes) do i 
+		@inbounds view(res,fill(:, ndims(sub_array) - 1)..., get_slice(i)) .= arrays(i)
+	end
+	res
 end
 
 function _kernel_sum!(a::CuDeviceMatrix{T}, b::CuDeviceMatrix{T}, nb_elements::CuDeviceVector{Int}) where {T}
@@ -93,8 +94,9 @@ end
 
 function batched_sum!(a::AbstractMatrix{T}, b::AbstractMatrix{T}, nb_elements::AbstractVector{Int}) where {T}
     nb_lines = size(b, 1)
-    Folds.foreach(1:length(a)) do identifiant
+	Folds.foreach(0:(length(a)-1)) do identifiant
         i, n = identifiant % nb_lines + 1, identifiant ÷ nb_lines + 1
+		@info "ids" i n
         if n + 1 > length(nb_elements)
             # we are launching mor threads than required
             return
@@ -106,11 +108,34 @@ function batched_sum!(a::AbstractMatrix{T}, b::AbstractMatrix{T}, nb_elements::A
     end
 end
 function batched_sum(b::AbstractMatrix,nb_elements::AbstractVector)
-	a = similar(b,dims=(size(b,1),length(nb_elements)-1))
+	a = similar(b,(size(b,1),length(nb_elements)-1))
 	batched_sum!(a,b,nb_elements)
 	a
 end
 
+function batched_sum(b::CuMatrix,nb_elements::Vector{Int})
+	a = similar(b,eltype(b),(size(b,1),length(nb_elements)))
+	batched_sum!(a,b,cu(nb_elements))
+	a
+end
+
+# ╔═╡ 48bd4a94-48f3-4f40-869e-dee0bf0c52ee
+
+# ╔═╡ f560fd11-65a0-4252-a8e0-c1bcf0e2fa3b
+function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(evaluate_and_cat), arrays, n::Int,sub_array,get_slice)
+	indexes=1:n
+	res = alloc_concatenated(sub_array , get_slice(n) |> last)
+	pullbacks = Array{Function}(undef,n)
+	Folds.foreach(indexes) do i 
+		res[fill(:, ndims(sub_array) - 1)..., get_slice(i)],pullbacks[i] =  rrule_via_ad(config,arrays,i)
+	end
+	function pullback_evaluate_and_cat(dres)
+		map(indexes) do i
+			pullbacks[i](dres[fill(:, ndims(sub_array) - 1)..., get_slice(i)])
+		end,NoTangent(),NoTangent(),NoTangent(),NoTangent()
+	end
+		res,pullback_evaluate_and_cat
+end
 function ChainRulesCore.rrule(::typeof(batched_sum),b::AbstractMatrix,nb_elements)
 	res = batched_sum(b,nb_elements)
 	function batched_sum_pullback(delta)
@@ -123,6 +148,16 @@ function ChainRulesCore.rrule(::typeof(batched_sum),b::AbstractMatrix,nb_element
 	res,batched_sum_pullback
 end
 
+function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
+    lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
+	get_slice(i) =  (lengths[i]+1:lengths[i+1])
+    batched = evaluate_and_cat(length(arg.field),arg.field|> first,get_slice) do i
+		arg.field[i]
+	end
+    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
+    @assert size(res, 2) == last(lengths)
+	batched_sum(res,lengths), st
+end
 function batched_sum!(a::CuMatrix, b::CuMatrix, nb_elements::CuVector{Int})
     nb_computations = size(b, 1) * (length(nb_elements) - 1)
     block_size = 1024
@@ -131,34 +166,19 @@ end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
-function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
-    lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
-    get_slice(i) = (lengths[i]+1:lengths[i+1])
-    batched = evaluate_and_cat(length(arg.field), arg.field |> first, get_slice) do i
-        arg.field[i]
-    end
-    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
-    @assert size(res, 2) == last(lengths)
-    sub_array = @view res[:, (lengths[1]+1):lengths[2]]
-    evaluate_and_cat(length(arg.field), sub_array, i -> i:i) do i
-        sum(@view res[fill(:, ndims(sub_array) - 1)..., get_slice(i)]; dims=ndims(sub_array))
-    end, st
-end
-
-function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, ::typeof(evaluate_and_cat), arrays, n::Int, sub_array, get_slice)
-    indexes = 1:n
-    res = alloc_concatenated(sub_array, get_slice(n) |> last)
-    pullbacks = Array{Function}(undef, n)
-    foreach(indexes) do i
-        res[fill(:, ndims(sub_array) - 1)..., get_slice(i)], pullbacks[i] = rrule_via_ad(config, arrays, i)
-    end
-    function pullback_evaluate_and_cat(dres)
-        map(indexes) do i
-            pullbacks[i](dres[fill(:, ndims(sub_array) - 1)..., get_slice(i)])
-        end, NoTangent(), NoTangent(), NoTangent(), NoTangent()
-    end
-    res, pullback_evaluate_and_cat
-end
+# function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
+#     lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
+#     get_slice(i) = (lengths[i]+1:lengths[i+1])
+#     batched = evaluate_and_cat(length(arg.field), arg.field |> first, get_slice) do i
+#         arg.field[i]
+#     end
+#     res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
+#     @assert size(res, 2) == last(lengths)
+#     sub_array = @view res[:, (lengths[1]+1):lengths[2]]
+#     evaluate_and_cat(length(arg.field), sub_array, i -> i:i) do i
+#         sum(@view res[fill(:, ndims(sub_array) - 1)..., get_slice(i)]; dims=ndims(sub_array))
+#     end, st
+# end
 
 function make_id_product(f, n)
     MallocArray(Int, 2, n * (n + 1) ÷ 2) do m
