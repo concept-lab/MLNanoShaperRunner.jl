@@ -11,12 +11,18 @@ using ChainRulesCore
 using Statistics
 using Folds
 using Static
+using StaticTools
 using CUDA
 
 function terse end
 struct Batch{T<:Vector}
     field::T
 end
+struct ConcatenatedBatch{T<:Vector}
+    field::T
+	lengths::Vector{Int}
+end
+ConcatenatedBatch((;field)::Batch) = ConcatenatedBatch(field,vcat([0], field .|> size .|> last |> cumsum))
 """
 	ModelInput
 
@@ -52,7 +58,6 @@ struct Partial{F<:Function,A<:Tuple,B<:Base.Pairs} <: Function
 end
 (f::Partial)(args...; kargs...) = f.f(f.args..., args...; f.kargs..., kargs...)
 
-broadcasted(f) = Partial(f, broadcast)
 
 #enable running on gpu
 Adapt.@adapt_structure Batch
@@ -64,31 +69,27 @@ Adapt.@adapt_structure Partial
 end
 
 
-function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
-    lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
-	get_slice(i) =  (lengths[i]+1:lengths[i+1])
-    batched = evaluate_and_cat(length(arg.field),arg.field|> first,get_slice) do i
-		arg.field[i]
-	end
-    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first 
+function (f::MLNanoShaperRunner.DeepSet)((;field,lengths)::ConcatenatedBatch, ps, st::NamedTuple)
+    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, field, ps, st) |> first 
 	batched_sum(res,lengths), st
+end
+function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
+	f(ConcatenatedBatch(arg),ps,st)
 end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
-# function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
-#     lengths = vcat([0], arg.field .|> size .|> last |> cumsum)
-#     get_slice(i) = (lengths[i]+1:lengths[i+1])
-#     batched = evaluate_and_cat(length(arg.field), arg.field |> first, get_slice) do i
-#         arg.field[i]
-#     end
-#     res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, batched, ps, st) |> first |> trace("raw")
-#     @assert size(res, 2) == last(lengths)
-#     sub_array = @view res[:, (lengths[1]+1):lengths[2]]
-#     evaluate_and_cat(length(arg.field), sub_array, i -> i:i) do i
-#         sum(@view res[fill(:, ndims(sub_array) - 1)..., get_slice(i)]; dims=ndims(sub_array))
-#     end, st
-# end
+
+function _make_id_product!(a,b,n)
+	k = 1
+	for i in 1:n
+		for j in 1:i
+			a[k] = i
+			b[k] = j
+			k +=1
+		end
+	end
+end
 
 function make_id_product(f, n)
     MallocArray(Int, 2, n * (n + 1) ÷ 2) do m
@@ -116,7 +117,7 @@ function preprocessing((; point, atoms)::ModelInput{T}) where {T}
     end
 end
 
-function preprocessing((; point, atoms)::Tuple{Batch{Point3{T}},StructVector{Sphere{T}}}) where {T}
+function preprocessing((; point, atoms)::Tuple{Batch{Point3{T}},Batch{StructVector{Sphere{T}}}}) where {T}
     Folds.map(point) do point
         preprocessing(ModelInput(point, atoms))
     end |> Batch
@@ -139,23 +140,7 @@ scale_factor(x) = x[end:end, :]
 function symetrise(; cutoff_radius::Number)
     Partial(symetrise; cutoff_radius) |> Lux.WrappedFunction
 end
-function expand_dims(x::AbstractArray, n::Integer)
-    reshape(x, size(x)[begin:(n-1)]..., n, size(x)[n:end]...)
-end
 
-
-function mergedims(x::AbstractArray, dims::AbstractRange)
-    pre = size(x)[begin:(first(dims)-1)]
-    merged = size(x)[dims]
-    post = size(x)[(last(dims)+1):end]
-    reshape(x, (pre..., prod(merged), post...))
-end
-
-function struct_stack(x::AbstractArray{PreprocessData{T}}) where {T}
-    f(field) = reshape(getproperty.(x, field), 1, 1, size(x)...)
-    x = StructVector{PreprocessData{T}}(f.(fieldnames(PreprocessData))) |>
-        trace("pre struct array")
-end
 
 function trace(message::String, x)
     @debug message x

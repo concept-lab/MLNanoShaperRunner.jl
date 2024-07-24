@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "a502f37aa9ec48a049d11f702d012a084dfbbac9"
+project_hash = "63180550e40d59abf1ec157afb4b349a32733b28"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "aa4d425271a914d8c4af6ad9fccb6eb3aec662c7"
@@ -180,6 +180,12 @@ deps = ["Static"]
 git-tree-sha1 = "f21cfd4950cb9f0587d5067e69405ad2acd27b87"
 uuid = "62783981-4cbd-42fc-bca8-16325de8dc4b"
 version = "0.1.6"
+
+[[deps.Bumper]]
+deps = ["StrideArraysCore"]
+git-tree-sha1 = "aa2fc4ee0754a4ec23208961d4d40f154157f5a3"
+uuid = "8ce10254-0962-460f-a3d8-1f77fea1446e"
+version = "0.6.0"
 
 [[deps.CEnum]]
 git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
@@ -1144,6 +1150,12 @@ weakdeps = ["ChainRulesCore", "Statistics"]
 git-tree-sha1 = "192954ef1208c7019899fbf8049e717f92959682"
 uuid = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
 version = "1.4.3"
+
+[[deps.StaticTools]]
+deps = ["Bumper", "LinearAlgebra", "LoopVectorization", "ManualMemory", "Random"]
+git-tree-sha1 = "c4408f74555df5747f63ea509768f754ddd0eecf"
+uuid = "86c06d3c-3f03-46de-9781-57580aa96d0a"
+version = "0.8.10"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
