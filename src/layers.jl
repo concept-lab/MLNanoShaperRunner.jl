@@ -113,8 +113,8 @@ function batched_sum(b::AbstractMatrix,nb_elements::AbstractVector)
 	a
 end
 
-function batched_sum(b::CuMatrix,nb_elements::Vector{Int})
-	a = similar(b,eltype(b),(size(b,1),length(nb_elements)))
+function batched_sum(b::CuMatrix,nb_elements::AbstractVector)
+	a = similar(b,eltype(b),(size(b,1),length(nb_elements)-1))
 	batched_sum!(a,b,cu(nb_elements))
 	a
 end
