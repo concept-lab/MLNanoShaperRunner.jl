@@ -2,6 +2,7 @@ module MLNanoShaperRunner
 
 include("Import.jl")
 include("distance_tree.jl")
+include("operations.jl")
 include("layers.jl")
 include("models.jl")
 include("c_interface.jl")
