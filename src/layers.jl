@@ -20,9 +20,9 @@ struct Batch{T<:Vector}
 end
 struct ConcatenatedBatch{T<:Vector}
     field::T
-	lengths::Vector{Int}
+    lengths::Vector{Int}
 end
-ConcatenatedBatch((;field)::Batch) = ConcatenatedBatch(field,vcat([0], field .|> size .|> last |> cumsum))
+ConcatenatedBatch((; field)::Batch) = ConcatenatedBatch(field, vcat([0], field .|> size .|> last |> cumsum))
 """
 	ModelInput
 
@@ -69,26 +69,26 @@ Adapt.@adapt_structure Partial
 end
 
 
-function (f::MLNanoShaperRunner.DeepSet)((;field,lengths)::ConcatenatedBatch, ps, st::NamedTuple)
-    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, field, ps, st) |> first 
-	batched_sum(res,lengths), st
+function (f::MLNanoShaperRunner.DeepSet)((; field, lengths)::ConcatenatedBatch, ps, st::NamedTuple)
+    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, field, ps, st) |> first
+    batched_sum(res, lengths), st
 end
 function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
-	f(ConcatenatedBatch(arg),ps,st)
+    f(ConcatenatedBatch(arg), ps, st)
 end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
 
-function _make_id_product!(a,b,n)
-	k = 1
-	for i in 1:n
-		for j in 1:i
-			a[k] = i
-			b[k] = j
-			k +=1
-		end
-	end
+function _make_id_product!(a, b, n)
+    k = 1
+    for i in 1:n
+        for j in 1:i
+            a[k] = i
+            b[k] = j
+            k += 1
+        end
+    end
 end
 
 function make_id_product(f, n)
@@ -100,27 +100,43 @@ function make_id_product(f, n)
     end
 end
 
-function preprocessing((; point, atoms)::ModelInput{T}) where {T}
+function preprocessing!(d_1, d_2, r_1, r_2, dot, (; point, atoms)::ModelInput{T}) where {T}
     (; r, center) = atoms
     make_id_product(length(atoms)) do prod_1, prod_2
         n_tot = length(prod_1)
         distances = euclidean.(Ref(point), center)
-        d_1 = distances[prod_1]
-        r_1 = r[prod_1]
-        d_2 = distances[prod_2]
-        r_2 = r[prod_2]
-        dot = map(1:n_tot) do n
+        d_1 .= distances[prod_1]
+        r_1 .= r[prod_1]
+        d_2 .= distances[prod_2]
+        r_2 .= r[prod_2]
+        map!(dot, 1:n_tot) do n
             (center[prod_1[n]] - point) ⋅ (center[prod_2[n]] - point) / (d_1[n] * d_2[n] + 1.0f-8)
         end
-        res = StructArray{PreprocessData{T}}((dot, r_1, r_2, d_1, d_2))
-        reshape(res, 1, :)
     end
 end
 
 function preprocessing((; point, atoms)::Tuple{Batch{Point3{T}},Batch{StructVector{Sphere{T}}}}) where {T}
-    Folds.map(point) do point
-        preprocessing(ModelInput(point, atoms))
-    end |> Batch
+    length_tot = sum(atoms.field) do atoms
+        length(atoms) * (length(atoms) + 1) ÷ 2
+    end
+	lengths = vcat([0], atoms.field .|> size .|> last |> cumsum)
+	get_slice(i) = (lengths[i]+1):lengths[i+1]
+    d_1 = Vector{T}(undef, length_tot)
+    d_2 = Vector{T}(undef, length_tot)
+    r_1 = Vector{T}(undef, length_tot)
+    r_2 = Vector{T}(undef, length_tot)
+    dot = Vector{T}(undef, length_tot)
+	Folds.foreach(eachindex(atoms.field)) do i
+        preprocessing!(
+		view(d_1, get_slice(i)),
+		view(d_2, get_slice(i)),
+		view(r_1, get_slice(i)),
+		view(r_2, get_slice(i)),
+		view(dot, get_slice(i)),
+		ModelInput(point.field[i],atoms.field[i])
+			)
+    end
+	ConcatenatedBatch(reshape(StructVector{PreprocessData}((dot,r_1,r_2,d_1,d_2)),1,:),lengths)	
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
