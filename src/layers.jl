@@ -128,7 +128,7 @@ end
 function preprocessing((point, atoms))
     preprocessing(point, atoms)
 end
-function preporcessing(point::Batch{Vector{Point3{T}}}, atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}}) where {T}
+function preprocessing(point::Batch{Vector{Point3{T}}}, atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}}) where {T}
     lengths = vcat([0], atoms.field .|> size .|> last |> Map(x -> x * (x + 1) ÷ 2) |> cumsum)
     length_tot = last(lengths)
     d_1 = Vector{T}(undef, length_tot)
@@ -201,7 +201,7 @@ end
 
 
 function select_neighboord(
-    point::Point, (; data, tree)::AnnotedKDTree; cutoff_radius)
+	point::Point, (; data, tree)::AnnotedKDTree{Type}; cutoff_radius)::StructVector{Type} where {Type}
     data[inrange(tree, point, cutoff_radius)]
 end
 
