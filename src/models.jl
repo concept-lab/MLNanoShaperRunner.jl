@@ -60,8 +60,8 @@ end
 
 function general_angular_dense(main_chain, secondary_chain; name::String,
     van_der_waals_channel=false, on_gpu=true, cutoff_radius::Float32=3.0f0)
-    main_chain = DeepSet(Chain(on_gpu ? gpu_device() : NoOpLayer(),
-	symetrise(; cutoff_radius),
+    main_chain = DeepSet(Chain(
+	symetrise(;cutoff_radius,device = on_gpu ? gpu_device() : identity),
 	main_chain
     ))
     function add_van_der_waals_channel(main_chain)

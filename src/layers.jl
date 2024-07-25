@@ -154,17 +154,22 @@ function cut(cut_radius::T, r::T)::T where {T<:Number}
 end
 
 function symetrise(val::StructArray{PreprocessData{T}};
-    cutoff_radius::T) where {T<:Number}
-    vcat(val.dot,
-        val.r_1 .+ val.r_2,
-        abs.(val.r_1 .- val.r_2),
-        val.d_1 .+ val.d_2, abs.(val.d_1 .- val.d_2)) .*
-    cut.(cutoff_radius, val.r_1) .* cut.(cutoff_radius, val.r_2)
+    cutoff_radius::T,device) where {T<:Number}
+	dot = device(val.dot)
+	d_1 = device(val.d_1)
+	d_2 = device(val.d_2)
+	r_1 = device(val.r_1)
+	r_2 = device(val.r_2)
+    vcat(dot,
+        r_1 .+ r_2,
+        abs.(r_1 .- r_2),
+        d_1 .+ d_2, abs.(d_1 .- d_2)) .*
+    cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
 end
 scale_factor(x) = x[end:end, :]
 
-function symetrise(; cutoff_radius::Number)
-    Partial(symetrise; cutoff_radius) |> Lux.WrappedFunction
+function symetrise(; cutoff_radius::Number,device)
+    Partial(symetrise; cutoff_radius,device) |> Lux.WrappedFunction
 end
 
 
