@@ -222,10 +222,10 @@ end
 function is_in_van_der_val(array::AbstractArray{<:PreprocessData})
     is_in_van_der_val.(array) |> any
 end
-function is_in_van_der_val(b::Batch)
-    reshape(map(b.field) do array
-            is_in_van_der_val(array)
-        end, 1, :)
+function is_in_van_der_val(b::ConcatenatedBatch)
+	map(1:length(b.lengths)) do i
+		is_in_van_der_val(get_element(b,i))
+	end
 end
 
 @concrete terse struct FunctionalLayer <: Lux.AbstractExplicitContainerLayer{(:layer)}
