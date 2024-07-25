@@ -2,7 +2,9 @@ using Lux
 
 select_and_preprocess((point, atoms); cutoff_radius) = select_and_preprocess(point, atoms; cutoff_radius)
 function select_and_preprocess(point::Batch, atoms::AnnotedKDTree; cutoff_radius)
-    neighboord = Batch(select_neighboord.(point.field, Ref(atoms); cutoff_radius))
+    neighboord = Folds.map(point.field) do point
+		select_neighboord(point, atoms; cutoff_radius)
+	end |> Batch
     preprocessing((point, neighboord))
 end
 function select_and_preprocess(point::Point, atoms::AnnotedKDTree; cutoff_radius)
