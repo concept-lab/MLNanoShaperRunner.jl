@@ -10,6 +10,7 @@ using Distances
 using ChainRulesCore
 using Statistics
 using Folds
+using Transducers
 using Static
 using StaticTools
 using CUDA
@@ -18,11 +19,20 @@ function terse end
 struct Batch{T<:AbstractVector}
     field::T
 end
-struct ConcatenatedBatch{T<:AbstractVector}
+"""
+	ConcatenatedBatch
+
+Represent a vector of arrays of sizes (a..., b_n) where b_n is the variable dimension of the batch.
+You can access view of individual arrays with `get_slice`.
+"""
+struct ConcatenatedBatch{T<:AbstractArray}
     field::T
     lengths::Vector{Int}
 end
 ConcatenatedBatch((; field)::Batch) = ConcatenatedBatch(field, vcat([0], field .|> size .|> last |> cumsum))
+get_slice(lengths::Vector{Int}, i::Integer) = (lengths[i]+1):lengths[i+1]
+get_element((; field, lengths)::ConcatenatedBatch, i::Integer) = view(field, repeat(:, ndims(field - 1))..., get_slice(lengths, i))
+
 """
 	ModelInput
 
@@ -115,15 +125,12 @@ function preprocessing!(d_1, d_2, r_1, r_2, dot, (; point, atoms)::ModelInput{T}
     end
 end
 
-function preprocessing((point, atoms)) 
+function preprocessing((point, atoms))
     preprocessing(point, atoms)
 end
 function preprocessing(point::Batch{Vector{Point3{T}}}, atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}}) where {T}
-    length_tot = sum(atoms.field) do atoms
-        length(atoms) * (length(atoms) + 1) ÷ 2
-    end
-    lengths = vcat([0], atoms.field .|> size .|> last |> cumsum)
-    get_slice(i) = (lengths[i]+1):lengths[i+1]
+    lengths = vcat([0], atoms.field .|> size .|> last |> Map(x -> x * (x + 1) ÷ 2) |> cumsum)
+    length_tot = last(lengths)
     d_1 = Vector{T}(undef, length_tot)
     d_2 = Vector{T}(undef, length_tot)
     r_1 = Vector{T}(undef, length_tot)
@@ -131,11 +138,11 @@ function preprocessing(point::Batch{Vector{Point3{T}}}, atoms::Batch{<:Vector{<:
     dot = Vector{T}(undef, length_tot)
     Folds.foreach(eachindex(atoms.field)) do i
         preprocessing!(
-            view(d_1, get_slice(i)),
-            view(d_2, get_slice(i)),
-            view(r_1, get_slice(i)),
-            view(r_2, get_slice(i)),
-            view(dot, get_slice(i)),
+            view(d_1, get_slice(lengths,i)),
+            view(d_2, get_slice(lengths,i)),
+            view(r_1, get_slice(lengths,i)),
+            view(r_2, get_slice(lengths,i)),
+            view(dot, get_slice(lengths,i)),
             ModelInput(point.field[i], atoms.field[i])
         )
     end
