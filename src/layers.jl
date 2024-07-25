@@ -15,10 +15,10 @@ using StaticTools
 using CUDA
 
 function terse end
-struct Batch{T<:Vector}
+struct Batch{T<:AbstractVector}
     field::T
 end
-struct ConcatenatedBatch{T<:Vector}
+struct ConcatenatedBatch{T<:AbstractVector}
     field::T
     lengths::Vector{Int}
 end
