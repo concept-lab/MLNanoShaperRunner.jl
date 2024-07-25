@@ -138,15 +138,15 @@ function preprocessing(point::Batch{Vector{Point3{T}}}, atoms::Batch{<:Vector{<:
     dot = Vector{T}(undef, length_tot)
     Folds.foreach(eachindex(atoms.field)) do i
         preprocessing!(
-            view(d_1, get_slice(lengths,i)),
-            view(d_2, get_slice(lengths,i)),
-            view(r_1, get_slice(lengths,i)),
-            view(r_2, get_slice(lengths,i)),
-            view(dot, get_slice(lengths,i)),
+            view(d_1, get_slice(lengths, i)),
+            view(d_2, get_slice(lengths, i)),
+            view(r_1, get_slice(lengths, i)),
+            view(r_2, get_slice(lengths, i)),
+            view(dot, get_slice(lengths, i)),
             ModelInput(point.field[i], atoms.field[i])
         )
     end
-	ConcatenatedBatch(reshape(StructVector{PreprocessData{T}}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
+    ConcatenatedBatch(reshape(StructVector{PreprocessData{T}}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
@@ -201,7 +201,7 @@ end
 
 
 function select_neighboord(
-	point::Point, (; data, tree)::AnnotedKDTree{Type}; cutoff_radius)::StructVector{Type} where {Type}
+    point::Point, (; data, tree)::AnnotedKDTree{Type}; cutoff_radius)::StructVector{Type} where {Type}
     data[inrange(tree, point, cutoff_radius)]
 end
 
@@ -223,9 +223,9 @@ function is_in_van_der_val(array::AbstractArray{<:PreprocessData})
     is_in_van_der_val.(array) |> any
 end
 function is_in_van_der_val(b::ConcatenatedBatch)
-	map(1:length(b.lengths)) do i
-		is_in_van_der_val(get_element(b,i))
-	end
+    reshape(map(1:length(b.lengths)) do i
+            is_in_van_der_val(get_element(b, i))
+        end, 1, :)
 end
 
 @concrete terse struct FunctionalLayer <: Lux.AbstractExplicitContainerLayer{(:layer)}
