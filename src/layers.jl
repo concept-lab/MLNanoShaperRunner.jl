@@ -153,13 +153,13 @@ function cut(cut_radius::T, r::T)::T where {T<:Number}
     ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
 end
 
-function symetrise((; dot, r_1, r_2, d_1, d_2)::StructArray{PreprocessData{T}};
+function symetrise(val::StructArray{PreprocessData{T}};
     cutoff_radius::T) where {T<:Number}
-    vcat(dot,
-        r_1 .+ r_2,
-        abs.(r_1 .- r_2),
-        d_1 .+ d_2, abs.(d_1 .- d_2)) .*
-    cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
+    vcat(val.dot,
+        val.r_1 .+ val.r_2,
+        abs.(val.r_1 .- val.r_2),
+        val.d_1 .+ val.d_2, abs.(val.d_1 .- val.d_2)) .*
+    cut.(cutoff_radius, val.r_1) .* cut.(cutoff_radius, val.r_2)
 end
 scale_factor(x) = x[end:end, :]
 
