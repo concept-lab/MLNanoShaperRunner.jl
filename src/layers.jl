@@ -118,7 +118,7 @@ end
 function preprocessing((point, atoms)) 
     preprocessing(point, atoms)
 end
-function preprocessing(point::Batch{Vector{Point3{T}}}, atoms::Batch{Vector{StructVector{Sphere{T}}}}) where {T}
+function preprocessing(point::Batch{Vector{Point3{T}}}, atoms::Batch{Vector{<:StructVector{Sphere{T}}}}) where {T}
     length_tot = sum(atoms.field) do atoms
         length(atoms) * (length(atoms) + 1) ÷ 2
     end
