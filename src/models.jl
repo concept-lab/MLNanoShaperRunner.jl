@@ -70,7 +70,7 @@ function general_angular_dense(main_chain, secondary_chain; name::String,
             WrappedFunction((x -> Float32.(x)) ∘ is_in_van_der_waals))
     end
     Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
-        main_chain |> (van_der_waals_channel ? add_van_der_wal_channel : identity),
+        main_chain |> (van_der_waals_channel ? add_van_der_waals_channel : identity),
         secondary_chain;
         name)
 end
