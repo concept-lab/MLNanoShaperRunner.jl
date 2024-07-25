@@ -194,6 +194,10 @@ function select_neighboord(
     point::Point, (; data, tree)::AnnotedKDTree; cutoff_radius)
     data[inrange(tree, point, cutoff_radius)]
 end
+function select_neighboord(
+    point::Batch, tree::AnnotedKDTree; cutoff_radius)
+    data[inrange(tree, point, cutoff_radius)]
+end
 
 struct PreprocessingLayer <: Lux.AbstractExplicitLayer
     fun::Function
