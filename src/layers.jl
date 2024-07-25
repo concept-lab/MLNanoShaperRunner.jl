@@ -119,24 +119,24 @@ function preprocessing((; point, atoms)::Tuple{Batch{Point3{T}},Batch{StructVect
     length_tot = sum(atoms.field) do atoms
         length(atoms) * (length(atoms) + 1) ÷ 2
     end
-	lengths = vcat([0], atoms.field .|> size .|> last |> cumsum)
-	get_slice(i) = (lengths[i]+1):lengths[i+1]
+    lengths = vcat([0], atoms.field .|> size .|> last |> cumsum)
+    get_slice(i) = (lengths[i]+1):lengths[i+1]
     d_1 = Vector{T}(undef, length_tot)
     d_2 = Vector{T}(undef, length_tot)
     r_1 = Vector{T}(undef, length_tot)
     r_2 = Vector{T}(undef, length_tot)
     dot = Vector{T}(undef, length_tot)
-	Folds.foreach(eachindex(atoms.field)) do i
+    Folds.foreach(eachindex(atoms.field)) do i
         preprocessing!(
-		view(d_1, get_slice(i)),
-		view(d_2, get_slice(i)),
-		view(r_1, get_slice(i)),
-		view(r_2, get_slice(i)),
-		view(dot, get_slice(i)),
-		ModelInput(point.field[i],atoms.field[i])
-			)
+            view(d_1, get_slice(i)),
+            view(d_2, get_slice(i)),
+            view(r_1, get_slice(i)),
+            view(r_2, get_slice(i)),
+            view(dot, get_slice(i)),
+            ModelInput(point.field[i], atoms.field[i])
+        )
     end
-	ConcatenatedBatch(reshape(StructVector{PreprocessData}((dot,r_1,r_2,d_1,d_2)),1,:),lengths)	
+    ConcatenatedBatch(reshape(StructVector{PreprocessData}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
