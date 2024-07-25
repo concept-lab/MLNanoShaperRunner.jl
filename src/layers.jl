@@ -146,7 +146,7 @@ function preprocessing(point::Batch{Vector{Point3{T}}}, atoms::Batch{<:Vector{<:
             ModelInput(point.field[i], atoms.field[i])
         )
     end
-    ConcatenatedBatch(reshape(StructVector{PreprocessData}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
+	ConcatenatedBatch(reshape(StructVector{PreprocessData{T}}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
