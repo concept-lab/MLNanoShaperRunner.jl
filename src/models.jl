@@ -7,10 +7,6 @@ function select_and_preprocess(point::Batch, atoms::AnnotedKDTree; cutoff_radius
 	end |> Batch
     preprocessing((point, neighboord))
 end
-function select_and_preprocess(point::Point, atoms::AnnotedKDTree; cutoff_radius)
-    atoms = select_neighboord(point, atoms; cutoff_radius)
-	preprocessing((Batch(point), Batch(atoms)))
-end
 
 function evaluate_if_atoms_in_neighboord(layer, arg::AbstractArray, ps, st; zero_value)
     if length(arg) == 0
