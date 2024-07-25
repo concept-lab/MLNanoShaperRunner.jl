@@ -1,10 +1,12 @@
 using Lux
 
-select_and_preprocess((point, atoms); cutoff_radius) = select_and_preprocess(point, atoms; cutoff_radius)
+function select_and_preprocess((point, atoms); cutoff_radius)
+    select_and_preprocess(point, atoms; cutoff_radius)
+end
 function select_and_preprocess(point::Batch, atoms::AnnotedKDTree; cutoff_radius)
     neighboord = Folds.map(point.field) do point
-		select_neighboord(point, atoms; cutoff_radius)
-	end |> Batch
+        select_neighboord(point, atoms; cutoff_radius)
+    end |> Batch
     preprocessing((point, neighboord))
 end
 
@@ -16,36 +18,17 @@ function evaluate_if_atoms_in_neighboord(layer, arg::AbstractArray, ps, st; zero
     end
 end
 
-"""
-    anakin()
 
-A model inspired by the anakin paper.
-The protein is decomposed in pairs of atom near the interest point.
-Each pair of atom is turned into a `Preprocessed` data and is then fed to the `Encoding` layer. 
-"""
-function anakin(; cutoff_radius::Float32=3.0f0)
-    a = 5
-    b = 5
-    chain = Chain(Dense(a * b + 2 => 10,
-            elu),
-        Dense(10 => 1, elu;
-            init_weight=Partial(glorot_uniform; gain=1 / 25_0000)))
-    Lux.Chain(
-        PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
-        DeepSet(Chain(Base.Fix2(reshape, (1, 1, :)),
-            Encoding(a, b, cutoff_radius), gpu_device(), chain)), tanh_fast; name="anakin")
-end
-
-function angular_dense(; cutoff_radius::Float32=3.0f0)
+function angular_dense(; cutoff_radius::Float32 = 3.0f0)
     chain = Chain(Dense(5 => 10, elu),
         Dense(10 => 1, elu))
     Lux.Chain(
         PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(),
-            chain)), tanh_fast; name="angular_dense")
+            chain)), tanh_fast; name = "angular_dense")
 end
 
-function deep_angular_dense(; cutoff_radius::Float32=3.0f0)
+function deep_angular_dense(; cutoff_radius::Float32 = 3.0f0)
     chain = Chain(
         Dense(5 => 30, elu),
         Dense(30 => 10, elu))
@@ -55,14 +38,14 @@ function deep_angular_dense(; cutoff_radius::Float32=3.0f0)
         Dense(30 => 10, elu),
         Dense(10 => 1, elu),
         tanh_fast;
-        name="deep_angular_dense")
+        name = "deep_angular_dense")
 end
 
 function general_angular_dense(main_chain, secondary_chain; name::String,
-    van_der_waals_channel=false, on_gpu=true, cutoff_radius::Float32=3.0f0)
+        van_der_waals_channel = false, on_gpu = true, cutoff_radius::Float32 = 3.0f0)
     main_chain = DeepSet(Chain(
-	symetrise(;cutoff_radius,device = on_gpu ? gpu_device() : identity),
-	main_chain
+        symetrise(; cutoff_radius, device = on_gpu ? gpu_device() : identity),
+        main_chain
     ))
     function add_van_der_waals_channel(main_chain)
         Parallel(vcat,
@@ -75,39 +58,45 @@ function general_angular_dense(main_chain, secondary_chain; name::String,
         name)
 end
 
-function tiny_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
+function tiny_angular_dense(; categorical = false, van_der_waals_channel = false, kargs...)
     general_angular_dense(
         Chain(Dense(5 => 7, elu),
             Dense(7 => 4, elu)),
-        Chain(Dense(4 + van_der_waals_channel => 6, elu),
+        Chain(
+            BatchNorm(4 + van_der_waals_channel),
+            Dense(4 + van_der_waals_channel => 6, elu),
             Dense(6 => 1, categorical ? identity : tanh_fast));
-        name="tiny_angular_dense_" * (categorical ? "c" : "") *
-             (van_der_waals_channel ? "v" : ""),
+        name = "tiny_angular_dense_" * (categorical ? "c" : "") *
+               (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel, kargs...)
 end
 
-function light_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
+function light_angular_dense(; categorical = false, van_der_waals_channel = false, kargs...)
     general_angular_dense(
         Chain(Dense(5 => 10, elu),
             Dense(10 => 5, elu)),
-        Chain(Dense(5 + van_der_waals_channel => 10, elu),
+        Chain(
+            BatchNorm(5 + van_der_waals_channel),
+			Dense(5 + van_der_waals_channel => 10, elu),
             Dense(10 => 1, categorical ? identity : tanh_fast));
-        name="light_angular_dense_" * (categorical ? "c" : "") *
-             (van_der_waals_channel ? "v" : ""),
+        name = "light_angular_dense_" * (categorical ? "c" : "") *
+               (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel, kargs...)
 end
 
-function medium_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
+function medium_angular_dense(;
+        categorical = false, van_der_waals_channel = false, kargs...)
     general_angular_dense(Chain(
             Dense(5 => 15, elu),
             Dense(15 => 10, elu)),
         Chain(
-            Dense(10 + van_der_waals_channel => 5; use_bias=false),
+            BatchNorm(10 + van_der_waals_channel),
+            Dense(10 + van_der_waals_channel => 5; use_bias = false),
             Dense(5 => 10, elu),
             Dense(10 => 1, categorical ? identity : tanh_fast));
-        name="medium_angular_dense_" *
-             (categorical ? "c" : "") *
-             (van_der_waals_channel ? "v" : ""),
+        name = "medium_angular_dense_" *
+               (categorical ? "c" : "") *
+               (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel,
         kargs...)
 end

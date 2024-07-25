@@ -35,6 +35,13 @@ function batched_sum!(a::AbstractMatrix{T}, b::AbstractMatrix{T}, nb_elements::A
         end
     end
 end
+"""
+    batched_sum(b::AbstractMatrix,nb_elements::AbstractVector)
+
+compute the sum of a Concatenated batch with ndim  = 2. The first dim is the feature dimension. The second dim is the the batch dim.
+
+Given `b` of size (n,m) and `nb_elements` of size (k,), the output has size (n,k).
+"""
 function batched_sum(b::AbstractMatrix,nb_elements::AbstractVector)
 	a = similar(b,(size(b,1),length(nb_elements)-1))
 	batched_sum!(a,b,nb_elements)
