@@ -216,15 +216,15 @@ Lux.initialstates(::AbstractRNG, ::PreprocessingLayer) = (;)
     ignore_derivatives() do
         fun(arg)
     end
-function is_in_van_der_val((; d_1, d_2, r_1, r_2)::PreprocessData)
+function is_in_van_der_waals((; d_1, d_2, r_1, r_2)::PreprocessData)
     d_1 <= r_1 || d_2 <= r_2
 end
-function is_in_van_der_val(array::AbstractArray{<:PreprocessData})
-    is_in_van_der_val.(array) |> any
+function is_in_van_der_waals(array::AbstractArray{<:PreprocessData})
+    is_in_van_der_waals.(array) |> any
 end
-function is_in_van_der_val(b::ConcatenatedBatch)
+function is_in_van_der_waals(b::ConcatenatedBatch)
     reshape(map(1:length(b.lengths)) do i
-            is_in_van_der_val(get_element(b, i))
+            is_in_van_der_waals(get_element(b, i))
         end, 1, :)
 end
 
