@@ -28,13 +28,31 @@ You can access view of individual arrays with `get_slice`.
 struct ConcatenatedBatch{T<:AbstractArray}
     field::T
     lengths::Vector{Int}
+	function ConcatenatedBatch(field,lengths)
+	@assert first(lengths) == 0
+	@assert issorted(lengths)
+	@assert last(lengths) == size(field)[end]
+	new(field,lengths)
+	end
 end
 function ConcatenatedBatch((; field)::Batch)
-    ConcatenatedBatch(field, vcat([0], field .|> size .|> last |> cumsum))
+    ConcatenatedBatch(cat(field; dims=ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
+end
+function ConcatenatedBatch(x::ConcatenatedBatch...)
+	field = cat(getfield.(x,:field),dims = ndims(first(x).field))
+	offsets = vcat([0],getfield.(x,:lengths) .|> last) |> cumsum
+	lengths = zip(getfield.(x,:lengths),offsets) |> Map((lengths,offset) -> lengths .+ offsets) |> vcat
+	ConcatenatedBatch(field,lengths)
 end
 get_slice(lengths::Vector{Int}, i::Integer) = (lengths[i]+1):lengths[i+1]
+get_slice(lengths::Vector{Int}, i::UnitRange) = (lengths[minimum(i)]+1):lengths[maximum(i)+1]
 function get_element((; field, lengths)::ConcatenatedBatch, i::Integer)
     view(field, fill(:, ndims(field) - 1)..., get_slice(lengths, i))
+end
+function get_element((; field, lengths)::ConcatenatedBatch, i::UnitRange)
+	idx = lengths[minimum(i):(maximum(i)+1)]
+	idx .-= first(idx)
+	ConcatenatedBatch(view(field, fill(:, ndims(field) - 1)..., get_slice(lengths, i)),idx)
 end
 
 """
@@ -234,7 +252,7 @@ function is_in_van_der_waals(array::AbstractArray{<:PreprocessData})
     is_in_van_der_waals.(array) |> any
 end
 function is_in_van_der_waals(b::ConcatenatedBatch)
-	reshape(map(1:(length(b.lengths)-1)) do i
+    reshape(map(1:(length(b.lengths)-1)) do i
             is_in_van_der_waals(get_element(b, i))
         end, 1, :)
 end
