@@ -14,7 +14,7 @@ struct ConcatenatedBatch{T<:AbstractArray}
     function ConcatenatedBatch(field::T, lengths::Vector{Int}) where {T<:AbstractArray}
         @assert first(lengths) == 0  "got $lengths"
         @assert issorted(lengths)  "got $lengths"
-        @assert last(lengths) == size(field)[end] "got $lengths, last value is $( size(field)[end])"
+        @assert last(lengths) == size(field)[end] "got $lengths, size is $( size(field))"
         new{T}(field, lengths)
     end
 end
