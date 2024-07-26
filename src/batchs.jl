@@ -24,7 +24,7 @@ end
 function stack_ConcatenatedBatch(x::AbstractVector{<:ConcatenatedBatch})
     field = cat(getfield.(x, :field), dims=ndims(first(x).field))
     offsets = vcat([0], getfield.(x, :lengths) .|> last)::Vector{Int} |> cumsum
-    lengths = zip(getfield.(x, :lengths), offsets) |> Map((lengths, offset) -> lengths .+ offsets) |> vcat
+    lengths = zip(getfield.(x, :lengths), offsets) |> Map((lengths, offset) -> lengths .+ offsets) |> vcat |> collect
     ConcatenatedBatch(field, lengths)
 end
 get_slice(lengths::Vector{Int}, i::Integer) = (lengths[i]+1):lengths[i+1]
