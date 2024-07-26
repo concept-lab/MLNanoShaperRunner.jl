@@ -5,7 +5,7 @@ using GeometryBasics
 using TOML
 using BioStructures
 using Folds
-export extract_balls, PQR,Atom
+export extract_balls, PQR, Atom
 
 struct XYZR{T} end
 struct PQR{T} end
@@ -21,29 +21,29 @@ base_type(::Type{XYZR{T}}) where {T} = Sphere{T}
 base_type(::Type{PQR{T}}) where {T} = Atom{T}
 
 function parse_line(line::String, ::Type{Atom{T}}) where {T}
-    type, atom_number, atom_name, residue_name, chain_id, x, y, z,charge,r = split(line)
+    type, atom_number, atom_name, residue_name, chain_id, x, y, z, charge, r = split(line)
     atom_number, chain_id = parse.(Int64, (atom_number, chain_id))
-    x, y, z, r, charge = parse.(T, (x, y, z, r,charge))
-	if Symbol(type) == :ATOM
+    x, y, z, r, charge = parse.(T, (x, y, z, r, charge))
+    if Symbol(type) == :ATOM
         Atom(atom_number,
             Symbol(atom_name),
             Symbol(residue_name),
             chain_id,
             Sphere(Point3(x, y, z), r),
             charge)
-	else
-		error("type not supported $type")
-	end
+    else
+        error("type not supported $type")
+    end
 end
 
 function parse_line(line::String, ::Type{Sphere{T}}) where {T}
     x, y, z, r = parse.(T, split(line))
     Sphere(Point3(x, y, z), r)
 end
-function Base.read(io::IO, T::Type{<:Union{XYZR, PQR}})
-	Folds.map(readlines(io)) do line 
-		parse_line(line,base_type(T))
-	end
+function Base.read(io::IO, T::Type{<:Union{XYZR,PQR}})
+    Folds.map(readlines(io)) do line
+        parse_line(line, base_type(T))
+    end
 end
 
 # function viz(x::AbstractArray{Sphere{T}}) where {T}
@@ -72,7 +72,7 @@ end
 params = "$( dirname(dirname(@__FILE__)))/param/param.toml"
 
 function extract_balls(T::Type{<:Number}, prot::MolecularStructure)
-    radii = TOML.parsefile(params)["atoms"]["radius"] |> Dict{String, T}
+    radii = TOML.parsefile(params)["atoms"]["radius"] |> Dict{String,T}
     reduce(prot, 4) do atom
         if typeof(atom) == Atom
             Sphere{T}[Sphere(Point3(atom.coords) .|> T,

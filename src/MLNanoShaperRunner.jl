@@ -9,7 +9,7 @@ include("c_interface.jl")
 using Reexport
 @reexport using .Import
 
-export RegionMesh, distance, signed_distance, anakin, trace, ModelInput, Batch, ConcatenatedBatch,
-       AnnotedKDTree, select_neighboord, Partial, get_preprocessing, drop_preprocessing,
-       PreprocessData,SerializedModel,get_cutoff_radius, batched_sum
+export RegionMesh, distance, signed_distance, trace, ModelInput, Batch, ConcatenatedBatch,
+    AnnotedKDTree, select_neighboord, Partial, get_preprocessing, drop_preprocessing,
+    PreprocessData, SerializedModel, get_cutoff_radius, batched_sum
 end # module MLNanoShaperRunner
