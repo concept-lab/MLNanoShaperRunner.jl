@@ -22,9 +22,9 @@ function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(cat(field; dims=ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
 end
 function stack_ConcatenatedBatch(x::AbstractVector{<:ConcatenatedBatch})
-    field = reduce(x) do a, b 
-		@info "vals" a b 
-		cat(a.field, b.field; dims=ndims(a.field))
+	field = mapreduce((a,b) ->cat(a.field, b.field; dims=ndims(a.field)), x) do a 
+		@info "vals" a 
+		a.field
     end
     offsets = vcat([0], getfield.(x, :lengths) .|> last)::Vector{Int} |> cumsum |> DropLast(1)
     lengths = vcat([0], reduce(vcat,
