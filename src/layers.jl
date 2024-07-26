@@ -234,7 +234,7 @@ function is_in_van_der_waals(array::AbstractArray{<:PreprocessData})
     is_in_van_der_waals.(array) |> any
 end
 function is_in_van_der_waals(b::ConcatenatedBatch)
-    reshape(map(1:length(b.lengths)) do i
+	reshape(map(1:(length(b.lengths)-1)) do i
             is_in_van_der_waals(get_element(b, i))
         end, 1, :)
 end
