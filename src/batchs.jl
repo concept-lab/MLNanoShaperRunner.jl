@@ -11,19 +11,19 @@ You can access view of individual arrays with `get_slice`.
 struct ConcatenatedBatch{T<:AbstractArray}
     field::T
     lengths::Vector{Int}
-	function ConcatenatedBatch(field::T, lengths::Vector{Int}) where T <: AbstractArray
+    function ConcatenatedBatch(field::T, lengths::Vector{Int}) where {T<:AbstractArray}
         @assert first(lengths) == 0
         @assert issorted(lengths)
         @assert last(lengths) == size(field)[end]
-		new{T}(field, lengths)
+        new{T}(field, lengths)
     end
 end
 function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(cat(field; dims=ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
 end
-function ConcatenatedBatch(x::ConcatenatedBatch...)
+function stack_ConcatenatedBatch(x::AbstractVector{ConcatenatedBatch})
     field = cat(getfield.(x, :field), dims=ndims(first(x).field))
-    offsets = vcat([0], getfield.(x, :lengths) .|> last) |> cumsum
+    offsets = vcat([0], getfield.(x, :lengths) .|> last)::Vector{Int} |> cumsum
     lengths = zip(getfield.(x, :lengths), offsets) |> Map((lengths, offset) -> lengths .+ offsets) |> vcat
     ConcatenatedBatch(field, lengths)
 end
