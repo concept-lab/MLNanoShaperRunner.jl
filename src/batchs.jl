@@ -21,7 +21,7 @@ end
 function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(cat(field; dims=ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
 end
-function stack_ConcatenatedBatch(x::AbstractVector{ConcatenatedBatch})
+function stack_ConcatenatedBatch(x::AbstractVector{<:ConcatenatedBatch})
     field = cat(getfield.(x, :field), dims=ndims(first(x).field))
     offsets = vcat([0], getfield.(x, :lengths) .|> last)::Vector{Int} |> cumsum
     lengths = zip(getfield.(x, :lengths), offsets) |> Map((lengths, offset) -> lengths .+ offsets) |> vcat
