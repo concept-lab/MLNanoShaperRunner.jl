@@ -12,8 +12,8 @@ struct ConcatenatedBatch{T<:AbstractArray}
     field::T
     lengths::Vector{Int}
     function ConcatenatedBatch(field::T, lengths::Vector{Int}) where {T<:AbstractArray}
-        @assert first(lengths) == 0  "got $lengths"
-        @assert issorted(lengths)  "got $lengths"
+        @assert first(lengths) == 0 "got $lengths"
+        @assert issorted(lengths) "got $lengths"
         @assert last(lengths) == size(field)[end] "got $lengths, size is $( size(field))"
         new{T}(field, lengths)
     end
@@ -22,7 +22,9 @@ function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(cat(field; dims=ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
 end
 function stack_ConcatenatedBatch(x::AbstractVector{<:ConcatenatedBatch})
-	field = reduce((x,y) -> cat(x,y; dims=ndims(first(x).field)),x)
+    field = reduce(x) do a, b 
+		cat(a, b; dims=ndims(a))
+    end
     offsets = vcat([0], getfield.(x, :lengths) .|> last)::Vector{Int} |> cumsum |> DropLast(1)
     lengths = vcat([0], reduce(vcat,
         zip(getfield.(x, :lengths) |> Map(Drop(1)), offsets) |> Map(((lengths, offset),) -> lengths .+ offset)
