@@ -40,5 +40,5 @@ end
 function get_element((; field, lengths)::ConcatenatedBatch, i::UnitRange)
     idx = lengths[minimum(i):(maximum(i)+1)]
     idx .-= first(idx)
-    ConcatenatedBatch(view(field, fill(:, ndims(field) - 1)..., get_slice(lengths, i)), idx)
+	ConcatenatedBatch(field[fill(:, ndims(field) - 1)..., get_slice(lengths, i)], idx)
 end
