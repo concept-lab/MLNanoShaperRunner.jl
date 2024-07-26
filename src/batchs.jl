@@ -23,7 +23,7 @@ function ConcatenatedBatch((; field)::Batch)
 end
 function stack_ConcatenatedBatch(x::AbstractVector{<:ConcatenatedBatch})
     field = reduce(x) do a, b 
-		cat(a, b; dims=ndims(a))
+		cat(a.field, b.field; dims=ndims(a.field))
     end
     offsets = vcat([0], getfield.(x, :lengths) .|> last)::Vector{Int} |> cumsum |> DropLast(1)
     lengths = vcat([0], reduce(vcat,
