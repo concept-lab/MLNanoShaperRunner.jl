@@ -18,33 +18,10 @@ function evaluate_if_atoms_in_neighboord(layer, arg::AbstractArray, ps, st; zero
     end
 end
 
-
-function angular_dense(; cutoff_radius::Float32=3.0f0)
-    chain = Chain(Dense(5 => 10, elu),
-        Dense(10 => 1, elu))
-    Lux.Chain(
-        PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
-        DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(),
-            chain)), tanh_fast; name="angular_dense")
-end
-
-function deep_angular_dense(; cutoff_radius::Float32=3.0f0)
-    chain = Chain(
-        Dense(5 => 30, elu),
-        Dense(30 => 10, elu))
-    Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
-        DeepSet(Chain(symetrise(; cutoff_radius), gpu_device(), chain)),
-        Dense(10 => 30, elu),
-        Dense(30 => 10, elu),
-        Dense(10 => 1, elu),
-        tanh_fast;
-        name="deep_angular_dense")
-end
-
 function general_angular_dense(main_chain, secondary_chain; name::String,
-    van_der_waals_channel=false, on_gpu=true, cutoff_radius::Float32=3.0f0)
+        van_der_waals_channel = false, on_gpu = true, cutoff_radius::Float32 = 3.0f0)
     main_chain = DeepSet(Chain(
-        symetrise(; cutoff_radius, device=on_gpu ? gpu_device() : identity),
+        symetrise(; cutoff_radius, device = on_gpu ? gpu_device() : identity),
         main_chain
     ))
     function add_van_der_waals_channel(main_chain)
@@ -64,7 +41,7 @@ end
 	`tiny_angular_dense` is a function that generate a lux model.
 
 """
-function tiny_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
+function tiny_angular_dense(; van_der_waals_channel = false, kargs...)
     general_angular_dense(
         Chain(Dense(5 => 7, elu),
             Dense(7 => 4, elu)),
@@ -72,12 +49,12 @@ function tiny_angular_dense(; categorical=false, van_der_waals_channel=false, ka
             BatchNorm(4 + van_der_waals_channel),
             Dense(4 + van_der_waals_channel => 6, elu),
             Dense(6 => 1, sigmoid_fast));
-        name="tiny_angular_dense_" * (categorical ? "c" : "") *
-             (van_der_waals_channel ? "v" : ""),
+        name = "tiny_angular_dense_" *
+               (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel, kargs...)
 end
 
-function light_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
+function light_angular_dense(; van_der_waals_channel = false, kargs...)
     general_angular_dense(
         Chain(Dense(5 => 10, elu),
             Dense(10 => 5, elu)),
@@ -85,24 +62,23 @@ function light_angular_dense(; categorical=false, van_der_waals_channel=false, k
             BatchNorm(5 + van_der_waals_channel),
             Dense(5 + van_der_waals_channel => 10, elu),
             Dense(10 => 1, sigmoid_fast));
-        name="light_angular_dense_" * (categorical ? "c" : "") *
-             (van_der_waals_channel ? "v" : ""),
+        name = "light_angular_dense_" *
+               (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel, kargs...)
 end
 
 function medium_angular_dense(;
-    categorical=false, van_der_waals_channel=false, kargs...)
+        van_der_waals_channel = false, kargs...)
     general_angular_dense(Chain(
             Dense(5 => 15, elu),
             Dense(15 => 10, elu)),
         Chain(
             BatchNorm(10 + van_der_waals_channel),
-            Dense(10 + van_der_waals_channel => 5; use_bias=false),
+            Dense(10 + van_der_waals_channel => 5; use_bias = false),
             Dense(5 => 10, elu),
             Dense(10 => 1, sigmoid_fast));
-        name="medium_angular_dense_" *
-             (categorical ? "c" : "") *
-             (van_der_waals_channel ? "v" : ""),
+        name = "medium_angular_dense_" *
+               (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel,
         kargs...)
 end
