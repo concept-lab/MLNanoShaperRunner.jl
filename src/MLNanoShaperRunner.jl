@@ -7,11 +7,9 @@ include("batchs.jl")
 include("layers.jl")
 include("models.jl")
 include("c_interface.jl")
-using Reexport
-@reexport using .Import
+using .Import
 
-
-export RegionMesh, distance, signed_distance, trace, ModelInput, Batch, ConcatenatedBatch,get_element
+export RegionMesh, distance, signed_distance, trace, ModelInput, Batch, ConcatenatedBatch,get_element,
     AnnotedKDTree, select_neighboord, Partial, get_preprocessing, drop_preprocessing,
     PreprocessedData, SerializedModel, get_cutoff_radius, batched_sum
 end # module MLNanoShaperRunner
