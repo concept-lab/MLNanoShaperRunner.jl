@@ -35,7 +35,7 @@ end
 get_slice(lengths::Vector{Int}, i::Integer) = (lengths[i]+1):lengths[i+1]
 get_slice(lengths::Vector{Int}, i::UnitRange) = (lengths[minimum(i)]+1):lengths[maximum(i)+1]
 function get_element((; field, lengths)::ConcatenatedBatch, i::Integer)
-    view(field, fill(:, ndims(field) - 1)..., get_slice(lengths, i))
+	field[fill(:, ndims(field) - 1)..., get_slice(lengths, i)]
 end
 function get_element((; field, lengths)::ConcatenatedBatch, i::UnitRange)
     idx = lengths[minimum(i):(maximum(i)+1)]
