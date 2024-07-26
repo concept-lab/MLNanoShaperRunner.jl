@@ -59,7 +59,7 @@ function ChainRulesCore.rrule(::typeof(batched_sum), b::AbstractMatrix, nb_eleme
     function batched_sum_pullback(delta)::Tuple{NoTangent,Any,NoTangent}
         delta_b = @thunk begin
             delta_b = similar(b)
-            foreach(minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements))-1)) do i
+            Folds.foreach(minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements))-1)) do i
                 delta_b[:, (nb_elements[i]+1):nb_elements[i+1]] .= delta[:, i]
             end
             delta_b
