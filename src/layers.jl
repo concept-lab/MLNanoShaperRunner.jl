@@ -16,44 +16,6 @@ using StaticTools
 using CUDA
 
 function terse end
-struct Batch{T<:AbstractVector}
-    field::T
-end
-"""
-	ConcatenatedBatch
-
-Represent a vector of arrays of sizes (a..., b_n) where b_n is the variable dimension of the batch.
-You can access view of individual arrays with `get_slice`.
-"""
-struct ConcatenatedBatch{T<:AbstractArray}
-    field::T
-    lengths::Vector{Int}
-	function ConcatenatedBatch(field::T, lengths::Vector{Int}) where T <: AbstractArray
-        @assert first(lengths) == 0
-        @assert issorted(lengths)
-        @assert last(lengths) == size(field)[end]
-		new{T}(field, lengths)
-    end
-end
-function ConcatenatedBatch((; field)::Batch)
-    ConcatenatedBatch(cat(field; dims=ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
-end
-function ConcatenatedBatch(x::ConcatenatedBatch...)
-    field = cat(getfield.(x, :field), dims=ndims(first(x).field))
-    offsets = vcat([0], getfield.(x, :lengths) .|> last) |> cumsum
-    lengths = zip(getfield.(x, :lengths), offsets) |> Map((lengths, offset) -> lengths .+ offsets) |> vcat
-    ConcatenatedBatch(field, lengths)
-end
-get_slice(lengths::Vector{Int}, i::Integer) = (lengths[i]+1):lengths[i+1]
-get_slice(lengths::Vector{Int}, i::UnitRange) = (lengths[minimum(i)]+1):lengths[maximum(i)+1]
-function get_element((; field, lengths)::ConcatenatedBatch, i::Integer)
-    view(field, fill(:, ndims(field) - 1)..., get_slice(lengths, i))
-end
-function get_element((; field, lengths)::ConcatenatedBatch, i::UnitRange)
-    idx = lengths[minimum(i):(maximum(i)+1)]
-    idx .-= first(idx)
-    ConcatenatedBatch(view(field, fill(:, ndims(field) - 1)..., get_slice(lengths, i)), idx)
-end
 
 """
 	ModelInput
@@ -68,6 +30,7 @@ struct ModelInput{T<:Number}
     atoms::StructVector{Sphere{T}} #Set
 end
 
+
 struct PreprocessedData{T<:Number}
     dot::T
     r_1::T
@@ -75,26 +38,16 @@ struct PreprocessedData{T<:Number}
     d_1::T
     d_2::T
 end
-
-PreprocessedData(x::Vector) = PreprocessData(map(1:5) do f
+PreprocessedData(x::Vector) = PreprocessedData(map(1:5) do f
     getindex.(x, f)
 end...)
 
-struct Partial{F<:Function,A<:Tuple,B<:Base.Pairs} <: Function
-    f::F
-    args::A
-    kargs::B
-    function Partial(f, args...; kargs...)
-        new{typeof(f),typeof(args),typeof(kargs)}(f, args, kargs)
-    end
-end
-(f::Partial)(args...; kargs...) = f.f(f.args..., args...; f.kargs..., kargs...)
 
 #enable running on gpu
 Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessedData
-Adapt.@adapt_structure Partial
+# Adapt.@adapt_structure Partial
 @concrete terse struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
     prepross
 end

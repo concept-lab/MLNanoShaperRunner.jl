@@ -1,6 +1,17 @@
 using CUDA
 using ChainRulesCore
 using Folds
+
+struct Partial{F<:Function,A<:Tuple,B<:Base.Pairs} <: Function
+    f::F
+    args::A
+    kargs::B
+    function Partial(f, args...; kargs...)
+        new{typeof(f),typeof(args),typeof(kargs)}(f, args, kargs)
+    end
+end
+(f::Partial)(args...; kargs...) = f.f(f.args..., args...; f.kargs..., kargs...)
+
 function _kernel_sum!(a::CuDeviceMatrix{T}, b::CuDeviceMatrix{T}, nb_elements::CuDeviceVector{Int}) where {T}
     nb_lines = size(b, 1)
     identifiant = (threadIdx().x - 1) + blockDim().x * (blockIdx().x - 1)
