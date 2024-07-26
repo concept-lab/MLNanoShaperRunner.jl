@@ -141,8 +141,8 @@ function symetrise(val::StructArray{PreprocessedData{T}};
     vcat(dot,
         r_1 .+ r_2,
         abs.(r_1 .- r_2),
-        d_1 .+ d_2, abs.(d_1 .- d_2)) .*
-    cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2)
+        d_1 .+ d_2, abs.(d_1 .- d_2),
+        cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2))
 end
 scale_factor(x) = x[end:end, :]
 
