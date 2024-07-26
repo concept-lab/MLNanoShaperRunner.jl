@@ -34,7 +34,7 @@ function ConcatenatedBatch((; field)::Batch)
 end
 get_slice(lengths::Vector{Int}, i::Integer) = (lengths[i]+1):lengths[i+1]
 function get_element((; field, lengths)::ConcatenatedBatch, i::Integer)
-    view(field, repeat(:, ndims(field) - 1)..., get_slice(lengths, i))
+    view(field, fill(:, ndims(field) - 1)..., get_slice(lengths, i))
 end
 
 """
