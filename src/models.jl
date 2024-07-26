@@ -65,7 +65,7 @@ function tiny_angular_dense(; categorical=false, van_der_waals_channel=false, ka
         Chain(
             BatchNorm(4 + van_der_waals_channel),
             Dense(4 + van_der_waals_channel => 6, elu),
-            Dense(6 => 1, categorical ? identity : tanh_fast));
+            Dense(6 => 1, sigmoid_fast ));
         name="tiny_angular_dense_" * (categorical ? "c" : "") *
              (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel, kargs...)
@@ -78,7 +78,7 @@ function light_angular_dense(; categorical=false, van_der_waals_channel=false, k
         Chain(
             BatchNorm(5 + van_der_waals_channel),
             Dense(5 + van_der_waals_channel => 10, elu),
-            Dense(10 => 1, categorical ? identity : tanh_fast));
+            Dense(10 => 1, sigmoid_fast));
         name="light_angular_dense_" * (categorical ? "c" : "") *
              (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel, kargs...)
@@ -93,7 +93,7 @@ function medium_angular_dense(;
             BatchNorm(10 + van_der_waals_channel),
             Dense(10 + van_der_waals_channel => 5; use_bias=false),
             Dense(5 => 10, elu),
-            Dense(10 => 1, categorical ? identity : tanh_fast));
+            Dense(10 => 1, sigmoid_fast));
         name="medium_angular_dense_" *
              (categorical ? "c" : "") *
              (van_der_waals_channel ? "v" : ""),
