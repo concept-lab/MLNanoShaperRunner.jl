@@ -34,7 +34,7 @@ function ConcatenatedBatch((; field)::Batch)
 end
 get_slice(lengths::Vector{Int}, i::Integer) = (lengths[i]+1):lengths[i+1]
 function get_element((; field, lengths)::ConcatenatedBatch, i::Integer)
-    view(field, repeat(:, ndims(field - 1))..., get_slice(lengths, i))
+    view(field, repeat(:, ndims(field) - 1)..., get_slice(lengths, i))
 end
 
 """
@@ -234,11 +234,9 @@ function is_in_van_der_waals(array::AbstractArray{<:PreprocessData})
     is_in_van_der_waals.(array) |> any
 end
 function is_in_van_der_waals(b::ConcatenatedBatch)
-    ignore_derivatives() do
-        reshape(map(1:length(b.lengths)) do i
-                is_in_van_der_waals(get_element(b, i))
-            end, 1, :)
-    end
+    reshape(map(1:length(b.lengths)) do i
+            is_in_van_der_waals(get_element(b, i))
+        end, 1, :)
 end
 
 @concrete terse struct FunctionalLayer <: Lux.AbstractExplicitContainerLayer{(:layer)}
