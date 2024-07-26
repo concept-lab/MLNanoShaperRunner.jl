@@ -68,7 +68,7 @@ struct ModelInput{T<:Number}
     atoms::StructVector{Sphere{T}} #Set
 end
 
-struct PreprocessData{T<:Number}
+struct PreprocessedData{T<:Number}
     dot::T
     r_1::T
     r_2::T
@@ -76,7 +76,7 @@ struct PreprocessData{T<:Number}
     d_2::T
 end
 
-PreprocessData(x::Vector) = PreprocessData(map(1:5) do f
+PreprocessedData(x::Vector) = PreprocessData(map(1:5) do f
     getindex.(x, f)
 end...)
 
@@ -93,7 +93,7 @@ end
 #enable running on gpu
 Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
-Adapt.@adapt_structure PreprocessData
+Adapt.@adapt_structure PreprocessedData
 Adapt.@adapt_structure Partial
 @concrete terse struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
     prepross
@@ -171,14 +171,14 @@ function preprocessing(point::Batch{Vector{Point3{T}}},
         )
     end
     ConcatenatedBatch(
-        reshape(StructVector{PreprocessData{T}}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
+        reshape(StructVector{PreprocessedData{T}}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
     ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
 end
 
-function symetrise(val::StructArray{PreprocessData{T}};
+function symetrise(val::StructArray{PreprocessedData{T}};
     cutoff_radius::T, device) where {T<:Number}
     dot = device(val.dot)
     d_1 = device(val.d_1)
@@ -245,10 +245,10 @@ Lux.initialstates(::AbstractRNG, ::PreprocessingLayer) = (;)
     ignore_derivatives() do
         fun(arg)
     end
-function is_in_van_der_waals((; d_1, d_2, r_1, r_2)::PreprocessData)
+function is_in_van_der_waals((; d_1, d_2, r_1, r_2)::PreprocessedData)
     d_1 <= r_1 || d_2 <= r_2
 end
-function is_in_van_der_waals(array::AbstractArray{<:PreprocessData})
+function is_in_van_der_waals(array::AbstractArray{<:PreprocessedData})
     is_in_van_der_waals.(array) |> any
 end
 function is_in_van_der_waals(b::ConcatenatedBatch)

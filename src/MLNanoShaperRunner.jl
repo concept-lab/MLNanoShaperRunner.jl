@@ -11,5 +11,5 @@ using Reexport
 
 export RegionMesh, distance, signed_distance, trace, ModelInput, Batch, ConcatenatedBatch,get_element
     AnnotedKDTree, select_neighboord, Partial, get_preprocessing, drop_preprocessing,
-    PreprocessData, SerializedModel, get_cutoff_radius, batched_sum
+    PreprocessedData, SerializedModel, get_cutoff_radius, batched_sum
 end # module MLNanoShaperRunner
