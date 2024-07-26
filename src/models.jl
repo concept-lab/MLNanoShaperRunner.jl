@@ -58,6 +58,12 @@ function general_angular_dense(main_chain, secondary_chain; name::String,
         name)
 end
 
+"""
+    tiny_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
+
+	`tiny_angular_dense` is a function that generate a lux model.
+
+"""
 function tiny_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
     general_angular_dense(
         Chain(Dense(5 => 7, elu),
@@ -65,7 +71,7 @@ function tiny_angular_dense(; categorical=false, van_der_waals_channel=false, ka
         Chain(
             BatchNorm(4 + van_der_waals_channel),
             Dense(4 + van_der_waals_channel => 6, elu),
-            Dense(6 => 1, sigmoid_fast ));
+            Dense(6 => 1, sigmoid_fast));
         name="tiny_angular_dense_" * (categorical ? "c" : "") *
              (van_der_waals_channel ? "v" : ""),
         van_der_waals_channel, kargs...)

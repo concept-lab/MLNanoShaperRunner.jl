@@ -769,9 +769,9 @@ version = "0.5.61"
 
 [[deps.LuxCore]]
 deps = ["Compat", "DispatchDoctor", "Functors", "Random", "Setfield"]
-git-tree-sha1 = "86f47269f207f77e87469280d33cfee06e0dcc78"
+git-tree-sha1 = "e25dd111094e3eefdcac5f094e7a8221b98ee44c"
 uuid = "bb33d45b-7691-41d6-9220-0943567d0623"
-version = "0.1.20"
+version = "0.1.21"
 weakdeps = ["ChainRulesCore", "EnzymeCore"]
 
     [deps.LuxCore.extensions]
@@ -813,10 +813,10 @@ version = "0.1.26"
     oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [[deps.LuxLib]]
-deps = ["ArrayInterface", "ChainRulesCore", "DispatchDoctor", "EnzymeCore", "FastClosures", "ForwardDiff", "KernelAbstractions", "LinearAlgebra", "LuxCore", "LuxDeviceUtils", "Markdown", "NNlib", "Random", "Reexport", "StaticArraysCore", "Statistics", "UnrolledUtilities"]
-git-tree-sha1 = "cf70f34015a408b484a34d378c17aed9962a847e"
+deps = ["ArrayInterface", "ChainRulesCore", "DispatchDoctor", "EnzymeCore", "FastClosures", "ForwardDiff", "KernelAbstractions", "LinearAlgebra", "LuxCore", "LuxDeviceUtils", "Markdown", "NNlib", "Random", "Reexport", "SLEEFPirates", "StaticArraysCore", "Statistics", "UnrolledUtilities"]
+git-tree-sha1 = "28c3e6ced4d45bb112e1322668f59e23523b784c"
 uuid = "82251201-b29d-42c6-8e01-566dec8acb11"
-version = "0.3.33"
+version = "0.3.34"
 
     [deps.LuxLib.extensions]
     LuxLibCUDAExt = "CUDA"
