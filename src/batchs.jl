@@ -21,7 +21,7 @@ end
 function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(cat(field; dims=ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
 end
-function stack_ConcatenatedBatch(x::AbstractVector{<:ConcatenatedBatch})
+function stack_ConcatenatedBatch(x::AbstractVector{<:ConcatenatedBatch{T}})::ConcatenatedBatch{T} where T
 	field = mapreduce((a,b) ->cat(a, b; dims=ndims(a)), x) do a 
 		a.field
     end
