@@ -3,10 +3,10 @@ using Lux
 function select_and_preprocess((point, atoms); cutoff_radius)
     select_and_preprocess(point, atoms; cutoff_radius)
 end
-function select_and_preprocess(point::Batch, atoms::AnnotedKDTree; cutoff_radius)
+function select_and_preprocess(point::Batch, atoms::AnnotedKDTree{Sphere{T}}; cutoff_radius) where T
     neighboord = Folds.map(point.field) do point
-        select_neighboord(point, atoms; cutoff_radius)
-    end |> Batch
+		select_neighboord(point, atoms; cutoff_radius)::StructVector{Sphere{T}}
+	end |> Batch{Vector{<:StructVector{Sphere{T}}}}
     preprocessing((point, neighboord))
 end
 
