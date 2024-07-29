@@ -118,7 +118,3 @@ function get_cutoff_radius(x::Lux.AbstractExplicitLayer)
     get_preprocessing(x).fun.kargs[:cutoff_radius]
 end
 get_cutoff_radius(x::Lux.StatefulLuxLayer) = get_cutoff_radius(x.model)
-function get_cutoff_radius(x::Lux.AbstractExplicitLayer)
-    get_preprocessing(x).fun.kargs[:cutoff_radius]
-end
-get_cutoff_radius(x::Lux.StatefulLuxLayer) = get_cutoff_radius(x.model)
