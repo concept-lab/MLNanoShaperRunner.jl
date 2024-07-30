@@ -66,10 +66,10 @@ uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 version = "1.1.1"
 
 [[deps.ArrayInterface]]
-deps = ["Adapt", "LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "5c9b74c973181571deb6442d41e5c902e6b9f38e"
+deps = ["Adapt", "LinearAlgebra"]
+git-tree-sha1 = "8c5b39db37c1d0340bf3b14895fba160c2d6cbb5"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "7.12.0"
+version = "7.14.0"
 
     [deps.ArrayInterface.extensions]
     ArrayInterfaceBandedMatricesExt = "BandedMatrices"
@@ -79,7 +79,8 @@ version = "7.12.0"
     ArrayInterfaceChainRulesExt = "ChainRules"
     ArrayInterfaceGPUArraysCoreExt = "GPUArraysCore"
     ArrayInterfaceReverseDiffExt = "ReverseDiff"
-    ArrayInterfaceStaticArraysCoreExt = "StaticArraysCore"
+    ArrayInterfaceSparseArraysExt = "SparseArrays"
+    ArrayInterfaceStaticArraysExt = "StaticArrays"
     ArrayInterfaceTrackerExt = "Tracker"
 
     [deps.ArrayInterface.weakdeps]
@@ -90,7 +91,8 @@ version = "7.12.0"
     ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
     GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
     ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
-    StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
     Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [[deps.Artifacts]]
@@ -146,9 +148,9 @@ version = "0.1.5"
 
 [[deps.BioStructures]]
 deps = ["BioGenerics", "BioSymbols", "CodecZlib", "Downloads", "Format", "LinearAlgebra", "PrecompileTools", "RecipesBase", "Statistics"]
-git-tree-sha1 = "5bc9736b06063d04bc664a0e2445cbc3412012d0"
+git-tree-sha1 = "4326bae6741b7f929b67ea8a1987782001c8b1dd"
 uuid = "de9282ab-8554-53be-b2d6-f6c222edabfc"
-version = "4.0.0"
+version = "4.1.0"
 
     [deps.BioStructures.extensions]
     BioStructuresBioAlignmentsExt = ["BioSequences", "BioAlignments"]
@@ -734,10 +736,10 @@ version = "0.11.1"
     CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 
 [[deps.Lux]]
-deps = ["ADTypes", "Adapt", "ArgCheck", "ArrayInterface", "ChainRulesCore", "Compat", "ConcreteStructs", "ConstructionBase", "EnzymeCore", "FastClosures", "ForwardDiff", "Functors", "GPUArraysCore", "LinearAlgebra", "LossFunctions", "LuxCore", "LuxDeviceUtils", "LuxLib", "MacroTools", "Markdown", "Optimisers", "Preferences", "Random", "Reexport", "Setfield", "Statistics", "UnrolledUtilities", "WeightInitializers"]
-git-tree-sha1 = "cad82f8dc3239ea5b9eda9e918f11da98616ec8e"
+deps = ["ADTypes", "Adapt", "ArgCheck", "ArrayInterface", "ChainRulesCore", "Compat", "ConcreteStructs", "ConstructionBase", "DispatchDoctor", "EnzymeCore", "FastClosures", "ForwardDiff", "Functors", "GPUArraysCore", "LinearAlgebra", "LossFunctions", "LuxCore", "LuxDeviceUtils", "LuxLib", "MacroTools", "Markdown", "NNlib", "Optimisers", "Preferences", "Random", "Reexport", "Setfield", "Statistics", "UnrolledUtilities", "WeightInitializers"]
+git-tree-sha1 = "9b362dc50fc1ab1bb7222cfbabe104358d85b3f9"
 uuid = "b2108857-7c20-44ae-9111-449ecde12c47"
-version = "0.5.61"
+version = "0.5.62"
 
     [deps.Lux.extensions]
     LuxComponentArraysExt = "ComponentArrays"
@@ -769,14 +771,15 @@ version = "0.5.61"
 
 [[deps.LuxCore]]
 deps = ["Compat", "DispatchDoctor", "Functors", "Random", "Setfield"]
-git-tree-sha1 = "e25dd111094e3eefdcac5f094e7a8221b98ee44c"
+git-tree-sha1 = "ddb556f073f7acbafa1589075a87ef4f3d7e02d2"
 uuid = "bb33d45b-7691-41d6-9220-0943567d0623"
-version = "0.1.21"
-weakdeps = ["ChainRulesCore", "EnzymeCore"]
+version = "0.1.22"
+weakdeps = ["ChainRulesCore", "EnzymeCore", "MLDataDevices"]
 
     [deps.LuxCore.extensions]
     LuxCoreChainRulesCoreExt = "ChainRulesCore"
     LuxCoreEnzymeCoreExt = "EnzymeCore"
+    LuxCoreMLDataDevicesExt = "MLDataDevices"
 
 [[deps.LuxDeviceUtils]]
 deps = ["Adapt", "ChainRulesCore", "Functors", "LuxCore", "Preferences", "Random", "UnrolledUtilities"]
@@ -813,10 +816,10 @@ version = "0.1.26"
     oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [[deps.LuxLib]]
-deps = ["ArrayInterface", "ChainRulesCore", "DispatchDoctor", "EnzymeCore", "FastClosures", "ForwardDiff", "KernelAbstractions", "LinearAlgebra", "LuxCore", "LuxDeviceUtils", "Markdown", "NNlib", "Random", "Reexport", "SLEEFPirates", "StaticArraysCore", "Statistics", "UnrolledUtilities"]
-git-tree-sha1 = "28c3e6ced4d45bb112e1322668f59e23523b784c"
+deps = ["ArrayInterface", "ChainRulesCore", "DispatchDoctor", "EnzymeCore", "FastClosures", "ForwardDiff", "KernelAbstractions", "LinearAlgebra", "LuxCore", "MLDataDevices", "Markdown", "NNlib", "Random", "Reexport", "SLEEFPirates", "StaticArraysCore", "Statistics", "UnrolledUtilities"]
+git-tree-sha1 = "7f5984033c9e41840111ec26b75bfb9c292db1d8"
 uuid = "82251201-b29d-42c6-8e01-566dec8acb11"
-version = "0.3.34"
+version = "0.3.37"
 
     [deps.LuxLib.extensions]
     LuxLibCUDAExt = "CUDA"
@@ -831,6 +834,40 @@ version = "0.3.34"
     ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
     Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
     cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
+
+[[deps.MLDataDevices]]
+deps = ["Adapt", "ChainRulesCore", "Functors", "Preferences", "Random", "UnrolledUtilities"]
+git-tree-sha1 = "7c8a26a11195c49062d11f3f0160335b10f07303"
+uuid = "7e8f7934-dd98-4c1a-8fe8-92b47a384d40"
+version = "1.0.0"
+
+    [deps.MLDataDevices.extensions]
+    MLDataDevicesAMDGPUExt = "AMDGPU"
+    MLDataDevicesCUDAExt = "CUDA"
+    MLDataDevicesFillArraysExt = "FillArrays"
+    MLDataDevicesGPUArraysExt = "GPUArrays"
+    MLDataDevicesMetalExt = ["GPUArrays", "Metal"]
+    MLDataDevicesRecursiveArrayToolsExt = "RecursiveArrayTools"
+    MLDataDevicesReverseDiffExt = "ReverseDiff"
+    MLDataDevicesSparseArraysExt = "SparseArrays"
+    MLDataDevicesTrackerExt = "Tracker"
+    MLDataDevicesZygoteExt = "Zygote"
+    MLDataDevicescuDNNExt = ["CUDA", "cuDNN"]
+    MLDataDevicesoneAPIExt = ["GPUArrays", "oneAPI"]
+
+    [deps.MLDataDevices.weakdeps]
+    AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+    FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
+    GPUArrays = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
+    Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+    RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+    ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+    Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
+    Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+    cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
+    oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
@@ -1321,9 +1358,9 @@ weakdeps = ["Requires", "StaticArraysCore"]
 
 [[deps.WeightInitializers]]
 deps = ["ArgCheck", "ChainRulesCore", "ConcreteStructs", "GPUArraysCore", "LinearAlgebra", "Random", "SpecialFunctions", "Statistics"]
-git-tree-sha1 = "2bf1485c270ac087ad707df929ce00de19a885ee"
+git-tree-sha1 = "58d74e2f95c825935b8307360e66b73359db47fd"
 uuid = "d49dbf32-c5c2-4618-8acc-27bb2598ef2d"
-version = "0.1.10"
+version = "1.0.0"
 
     [deps.WeightInitializers.extensions]
     WeightInitializersAMDGPUExt = ["AMDGPU", "GPUArrays"]

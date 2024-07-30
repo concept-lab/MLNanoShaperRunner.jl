@@ -3,9 +3,13 @@ typedef struct {
   float y;
   float z;
   float r;
-} Sphere;
+} sphere;
 
-// void init_julia(int argc, char *argv[]);
+typedef struct {
+  float x;
+  float y;
+  float z;
+} point;
 // void shutdown_julia(int retcode);
 
 /*
@@ -31,10 +35,10 @@ length of the array
 - 1: data could not be read
 - 2: unknow error
 */
-int load_atoms(Sphere *start, int length);
+int load_atoms(sphere *start, int length);
 /*
     eval_model(x::Float32,y::Float32,z::Float32)::Float32
 
 evaluate the model at coordinates `x` `y` `z`.
 */
-float eval_model(float x, float y, float z);
+float eval_model(point *start,int length); 

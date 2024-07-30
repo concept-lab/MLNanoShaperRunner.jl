@@ -28,6 +28,11 @@ mutable struct CSphere
     z::Float32
     r::Float32
 end
+mutable struct CPoint
+    x::Float32
+    y::Float32
+    z::Float32
+end
 CSphere((; center, r)::Sphere) = CSphere(center..., r)
 
 """
@@ -101,11 +106,40 @@ Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::Cint)::Cint
     end
 end
 
-Base.@ccallable function eval_model(x::Float32, y::Float32, z::Float32)::Float32
-    point = Point3f(x, y, z)
-    if distance(point, global_state.atoms.tree) >= global_state.cutoff_radius
-        0.0f0
+"""
+    evaluate_model(
+        model::Lux.StatefulLuxLayer, x::Point3f, atoms::AnnotedKDTree; cutoff_radius, default_value = -0.0f0)
+
+	evaluate the model on a single point.
+	This function handle the logic in case the point is too far from the atoms. In this case default_value is returned and the model is not run.
+"""
+function evaluate_model(
+        model::Lux.StatefulLuxLayer, x::Point3f, atoms::AnnotedKDTree; cutoff_radius, default_value = -0.0f0)
+    if distance(x, atoms.tree) >= cutoff_radius
+        default_value
     else
-        only(model((Point3f(x), global_state.atoms))) - 0.5f0
+        model((x, atoms)) |> cpu_device() |> first
     end
+end
+
+function evaluate_model(
+        model::Lux.StatefulLuxLayer, x::Batch{Vector{Point3f}}, atoms::AnnotedKDTree;
+        cutoff_radius, default_value = 0.0f0)
+    is_close = map(x.field) do x
+        distance(x, atoms.tree) <= cutoff_radius
+    end
+    close_points = x.field[is_close] |> Batch
+    if length(close_points.field) > 0
+        close_values = model((close_points, atoms)) |> cpu_device() |> first
+        ifelse.(is_close, close_values, default_value)
+    else
+        zeros(x.field)
+    end
+end
+Base.@ccallable function eval_model(points::Ptr{CPoints},length::Cint)::Float32
+	points = map(unsafe_wrap(Array, points, length)) do p
+		Point3f(p.x,p.y,p.z)
+	end |> Batch
+	evaluate_model(global_state.model,points,global_state.atoms;cutoff_radius = global_state.cutoff_radius)
+
 end
