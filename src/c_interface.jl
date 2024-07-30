@@ -136,7 +136,7 @@ function evaluate_model(
         zeros(x.field)
     end
 end
-Base.@ccallable function eval_model(points::Ptr{CPoints},length::Cint)::Float32
+Base.@ccallable function eval_model(points::Ptr{CPoint},length::Cint)::Float32
 	points = map(unsafe_wrap(Array, points, length)) do p
 		Point3f(p.x,p.y,p.z)
 	end |> Batch
