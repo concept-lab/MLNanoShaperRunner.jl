@@ -37,8 +37,6 @@ length of the array
 */
 int load_atoms(sphere *start, int length);
 /*
-    eval_model(x::Float32,y::Float32,z::Float32)::Float32
-
-evaluate the model at coordinates `x` `y` `z`.
-*/
+ *evaluate the model at coordinates start[0],...,start[length -1]
+ */
 float eval_model(point *start,int length); 
