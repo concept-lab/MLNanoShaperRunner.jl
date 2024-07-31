@@ -11,7 +11,7 @@ function select_and_preprocess(
             cutoff_radius)::StructVector{
             Sphere{T}, @NamedTuple{center::Vector{Point3{T}}, r::Vector{T}}, Int64}
     end |> Batch{Vector{StructVector{
-            Sphere{T}, @NamedTuple{center::Vector{Point3{T}}, r::Vector{T}}, Int64}}}
+        Sphere{T}, @NamedTuple{center::Vector{Point3{T}}, r::Vector{T}}, Int64}}}
     preprocessing((point, neighboord))
 end
 
@@ -32,7 +32,7 @@ function general_angular_dense(main_chain, secondary_chain; name::String,
     function add_van_der_waals_channel(main_chain)
         Parallel(vcat,
             main_chain,
-            WrappedFunction((x -> Float32.(x)) ∘ is_in_van_der_waals))
+			WrappedFunction{:direct_call}((x -> Float32.(x)) ∘ is_in_van_der_waals))
     end
     Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         main_chain |> (van_der_waals_channel ? add_van_der_waals_channel : identity),
@@ -51,7 +51,7 @@ function tiny_angular_dense(; van_der_waals_channel = false, kargs...)
         Parallel(.*,
             Chain(Dense(6 => 7, elu),
                 Dense(7 => 4, elu)),
-            Lux.WrappedFunction(scale_factor)
+            Lux.WrappedFunction{:direct_call}(scale_factor)
         ),
         Chain(
             BatchNorm(4 + van_der_waals_channel),
@@ -67,7 +67,7 @@ function light_angular_dense(; van_der_waals_channel = false, kargs...)
         Parallel(.*,
             Chain(Dense(6 => 10, elu),
                 Dense(10 => 5, elu)),
-            Lux.WrappedFunction(scale_factor)
+            Lux.WrappedFunction{:direct_call}(scale_factor)
         ),
         Chain(
             BatchNorm(5 + van_der_waals_channel),
@@ -84,7 +84,7 @@ function medium_angular_dense(;
         Parallel(.*,
             Chain(Dense(6 => 15, elu),
                 Dense(15 => 10, elu)),
-            Lux.WrappedFunction(scale_factor)
+            Lux.WrappedFunction{:direct_call}(scale_factor)
         ),
         Chain(
             BatchNorm(10 + van_der_waals_channel),
