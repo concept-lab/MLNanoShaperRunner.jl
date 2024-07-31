@@ -83,7 +83,7 @@ function medium_angular_dense(;
     general_angular_dense(
         Parallel(.*,
             Chain(Dense(6 => 15, elu),
-                Dense(15 => 5, elu)),
+                Dense(15 => 10, elu)),
             Lux.WrappedFunction(scale_factor)
         ),
         Chain(
