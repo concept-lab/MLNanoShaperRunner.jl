@@ -32,7 +32,7 @@ function general_angular_dense(main_chain, secondary_chain; name::String,
     function add_van_der_waals_channel(main_chain)
         Parallel(vcat,
             main_chain,
-			WrappedFunction{:direct_call}((x -> Float32.(x)) ∘ is_in_van_der_waals))
+            WrappedFunction{:direct_call}((x -> Float32.(x)) ∘ is_in_van_der_waals))
     end
     Chain(PreprocessingLayer(Partial(select_and_preprocess; cutoff_radius)),
         main_chain |> (van_der_waals_channel ? add_van_der_waals_channel : identity),
@@ -96,12 +96,13 @@ function medium_angular_dense(;
         van_der_waals_channel,
         kargs...)
 end
-drop_preprocessing(x::Chain) =
+function drop_preprocessing(x::Chain)
     if typeof(x[1]) <: PreprocessingLayer
-        Chain(NoOpLayer(), x[2:end])
+        Chain(NoOpLayer(), map(i -> x[i], 2:length(x))..., disable_optimizations = true)
     else
         x
     end
+end
 
 get_preprocessing(x::Chain) =
     if typeof(x[1]) <: PreprocessingLayer

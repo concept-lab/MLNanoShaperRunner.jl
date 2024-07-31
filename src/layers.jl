@@ -147,7 +147,7 @@ end
 scale_factor(x) = x[end:end, :]
 
 function symetrise(; cutoff_radius::Number, device)
-    Partial(symetrise; cutoff_radius, device) |> Lux.WrappedFunction
+	Partial(symetrise; cutoff_radius, device) |> Lux.WrappedFunction{:direct_call}
 end
 
 function trace(message::String, x)
