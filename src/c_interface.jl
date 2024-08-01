@@ -74,8 +74,7 @@ Base.@ccallable function load_model(path::Cstring)::Cint
             data = deserialize(path)
             @debug "deserialized"
             if typeof(data) <: SerializedModel
-                global_state.model = StatefulLuxLayer(data.model(), data.parameters,
-                    Lux.initialstates(MersenneTwister(42), data.model()))
+				global_state.model = production_instantiate(data)
                 global_state.cutoff_radius = get_cutoff_radius(global_state.model)
                 0
             else

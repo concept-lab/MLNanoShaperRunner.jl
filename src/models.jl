@@ -57,8 +57,8 @@ function tiny_angular_dense(; van_der_waals_channel=false, kargs...)
             BatchNorm(4 + van_der_waals_channel),
             Dense(4 + van_der_waals_channel => 6, elu),
             Dense(6 => 1, sigmoid_fast));
-        name="tiny_angular_dense_" *
-             (van_der_waals_channel ? "v" : ""),
+        name="tiny_angular_dense" *
+             (van_der_waals_channel ? "_v" : ""),
         van_der_waals_channel, kargs...)
 end
 
@@ -73,8 +73,8 @@ function light_angular_dense(; van_der_waals_channel=false, kargs...)
             BatchNorm(5 + van_der_waals_channel),
             Dense(5 + van_der_waals_channel => 10, elu),
             Dense(10 => 1, sigmoid_fast));
-        name="light_angular_dense_" *
-             (van_der_waals_channel ? "v" : ""),
+        name="light_angular_dense" *
+             (van_der_waals_channel ? "_v" : ""),
         van_der_waals_channel, kargs...)
 end
 
@@ -91,8 +91,8 @@ function medium_angular_dense(;
             Dense(10 + van_der_waals_channel => 5; use_bias=false),
             Dense(5 => 10, elu),
             Dense(10 => 1, sigmoid_fast));
-        name="medium_angular_dense_" *
-             (van_der_waals_channel ? "v" : ""),
+        name="medium_angular_dense" *
+             (van_der_waals_channel ? "_v" : ""),
         van_der_waals_channel,
         kargs...)
 end
@@ -113,12 +113,14 @@ get_preprocessing(x::Chain) =
 
 struct SerializedModel
     model::Partial
-    weights::NamedTuple
+    parameters::NamedTuple
+    states::NamedTuple
 end
-production_instantiate((; model, weights)::SerializedModel) = Lux.StatefulLuxLayer(
+
+production_instantiate((; model, parameters,states)::SerializedModel) = Lux.StatefulLuxLayer(
     model(), 
-	weights, 
-	Lux.initialparameters(MersenneTwister(42), model.model()) |> Lux.testmode)
+	parameters, 
+	states |> Lux.testmode)
 
 function get_cutoff_radius(x::Lux.AbstractExplicitLayer)
     get_preprocessing(x).fun.kargs[:cutoff_radius]
