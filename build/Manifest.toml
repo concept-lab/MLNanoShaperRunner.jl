@@ -681,7 +681,7 @@ version = "0.3.26"
 deps = ["Adapt", "BioStructures", "ChainRulesCore", "ConcreteStructs", "Distances", "Folds", "GeometryBasics", "LinearAlgebra", "Lux", "LuxCore", "NearestNeighbors", "Random", "Reexport", "Serialization", "SimpleChains", "Static", "Statistics", "StructArrays", "TOML"]
 path = ".."
 uuid = "0d104b66-282b-4c8e-a741-e32dba8f77f1"
-version = "1.0.0-DEV"
+version = "0.1.0"
 
 [[deps.MMTF]]
 deps = ["CodecZlib", "Downloads", "MsgPack"]

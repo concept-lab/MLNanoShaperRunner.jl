@@ -1,7 +1,7 @@
 name = "MLNanoShaperRunner"
 uuid = "0d104b66-282b-4c8e-a741-e32dba8f77f1"
 authors = ["tristan <tristan.hacquard@polytechnique.org>"]
-version = "1.0.0-DEV"
+version = "0.1.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
