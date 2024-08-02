@@ -117,22 +117,23 @@ function evaluate_model(
     if distance(x, atoms.tree) >= cutoff_radius
         default_value
     else
-        model((x, atoms)) |> cpu_device() |> first
+		model((Batch(x), atoms)) |> cpu_device() |> first |> only
     end
 end
-
 function evaluate_model(
         model::Lux.StatefulLuxLayer, x::Batch{Vector{Point3f}}, atoms::AnnotedKDTree;
-        cutoff_radius, default_value = 0.0f0)
+		cutoff_radius, default_value = 0.0f0)::Vector{Float32}
     is_close = map(x.field) do x
-        distance(x, atoms.tree) <= cutoff_radius
+        distance(x, atoms.tree) < cutoff_radius
     end
     close_points = x.field[is_close] |> Batch
     if length(close_points.field) > 0
-        close_values = model((close_points, atoms)) |> cpu_device() |> first
-        ifelse.(is_close, close_values, default_value)
+        close_values = model((close_points, atoms)) |> cpu_device()
+		res = fill(default_value,size(x.field)...)
+        res[is_close] = close_values
+		res
     else
-        zeros(x.field)
+         fill(default_value,size(x.field)...)
     end
 end
 Base.@ccallable function eval_model(points::Ptr{CPoint},length::Cint)::Float32
