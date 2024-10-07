@@ -18,6 +18,7 @@ struct ConcatenatedBatch{T<:AbstractArray}
         new{T}(field, lengths)
     end
 end
+Base.length(x::ConcatenatedBatch) = length(x.lengths)
 function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(cat(field; dims=ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
 end

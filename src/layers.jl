@@ -48,13 +48,13 @@ Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessedData
 # Adapt.@adapt_structure Partial
-@concrete terse struct DeepSet <: Lux.AbstractExplicitContainerLayer{(:prepross,)}
+@concrete terse struct DeepSet <: Lux.AbstractLuxContainerLayer{(:prepross,)}
     prepross
 end
 
 function (f::MLNanoShaperRunner.DeepSet)(
     (; field, lengths)::ConcatenatedBatch, ps, st::NamedTuple)
-    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, field, ps, st) |> first
+    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, field, ps.prepross, st.prepross) |> first
     batched_sum(res, lengths), st
 end
 function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
@@ -147,7 +147,7 @@ end
 scale_factor(x) = x[end:end, :]
 
 function symetrise(; cutoff_radius::Number, device)
-	Partial(symetrise; cutoff_radius, device) |> Lux.WrappedFunction{:direct_call}
+	Partial(symetrise; cutoff_radius, device) |> Lux.WrappedFunction
 end
 
 function trace(message::String, x)
@@ -187,7 +187,7 @@ function select_neighboord(
     data[inrange(tree, point, cutoff_radius)]
 end
 
-struct PreprocessingLayer <: Lux.AbstractExplicitLayer
+struct PreprocessingLayer <: Lux.AbstractLuxLayer
     fun::Function
 end
 
@@ -210,7 +210,7 @@ function is_in_van_der_waals(b::ConcatenatedBatch)
         end, 1, :)
 end
 
-@concrete terse struct FunctionalLayer <: Lux.AbstractExplicitContainerLayer{(:layer)}
+@concrete terse struct FunctionalLayer <: Lux.AbstractLuxContainerLayer{(:layer)}
     fun::Function
     layer
 end

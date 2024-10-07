@@ -51,7 +51,7 @@ function tiny_angular_dense(; van_der_waals_channel=false, kargs...)
         Parallel(.*,
             Chain(Dense(6 => 7, elu),
                 Dense(7 => 4, elu)),
-            Lux.WrappedFunction{:direct_call}(scale_factor)
+            Lux.WrappedFunction(scale_factor)
         ),
         Chain(
             BatchNorm(4 + van_der_waals_channel),
@@ -67,7 +67,7 @@ function light_angular_dense(; van_der_waals_channel=false, kargs...)
         Parallel(.*,
             Chain(Dense(6 => 10, elu),
                 Dense(10 => 5, elu)),
-            Lux.WrappedFunction{:direct_call}(scale_factor)
+            Lux.WrappedFunction(scale_factor)
         ),
         Chain(
             BatchNorm(5 + van_der_waals_channel),
@@ -84,7 +84,7 @@ function medium_angular_dense(;
         Parallel(.*,
             Chain(Dense(6 => 15, elu),
                 Dense(15 => 10, elu)),
-            Lux.WrappedFunction{:direct_call}(scale_factor)
+            Lux.WrappedFunction(scale_factor)
         ),
         Chain(
             BatchNorm(10 + van_der_waals_channel),
@@ -98,7 +98,7 @@ function medium_angular_dense(;
 end
 function drop_preprocessing(x::Chain)
     if typeof(x[1]) <: PreprocessingLayer
-        Chain(NoOpLayer(), map(i -> x[i], 2:length(x))..., disable_optimizations=true)
+        Chain(NoOpLayer(), map(i -> x[i], 2:length(x))...)
     else
         x
     end
@@ -122,7 +122,7 @@ production_instantiate((; model, parameters,states)::SerializedModel) = Lux.Stat
 	parameters, 
 	states |> Lux.testmode)
 
-function get_cutoff_radius(x::Lux.AbstractExplicitLayer)
+function get_cutoff_radius(x::Lux.AbstractLuxLayer)
     get_preprocessing(x).fun.kargs[:cutoff_radius]
 end
 get_cutoff_radius(x::Lux.StatefulLuxLayer) = get_cutoff_radius(x.model)
