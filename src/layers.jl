@@ -54,7 +54,7 @@ end
 
 function (f::MLNanoShaperRunner.DeepSet)(
     (; field, lengths)::ConcatenatedBatch, ps, st::NamedTuple)
-    res::AbstractMatrix{<:Number} = Lux.apply(f.prepross, field, ps.prepross, st.prepross) |> first
+    res,st = Lux.apply(f.prepross, field, ps.prepross, st.prepross)
     batched_sum(res, lengths), st
 end
 function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
