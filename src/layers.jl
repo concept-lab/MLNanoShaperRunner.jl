@@ -135,7 +135,7 @@ function cut(cut_radius::T, r::T)::T where {T<:Number}
 end
 
 function symetrise(val::StructArray{PreprocessedData{T}};
-    cutoff_radius::T, device) where {T<:Number}
+    cutoff_radius::T, device = identity) where {T<:Number}
     dot = device(val.dot)
     d_1 = device(val.d_1)
     d_2 = device(val.d_2)
@@ -147,11 +147,16 @@ function symetrise(val::StructArray{PreprocessedData{T}};
         d_1 .+ d_2, abs.(d_1 .- d_2),
         cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2))
 end
-scale_factor(x) = x[end:end, :]
+
+function symetrise(val::ConcatenatedBatch{<:StructArray{<:PreprocessedData}};kargs...) 
+    ConcatenatedBatch(symetrise(val.field;kargs...),val.lengths)
+end
 
 function symetrise(; cutoff_radius::Number, device)
-	Partial(symetrise; cutoff_radius, device) |> Lux.WrappedFunction
+	Partial(symetrise; cutoff_radius, device)
 end
+
+scale_factor(x) = x[end:end, :]
 
 function trace(message::String, x)
     @debug message x

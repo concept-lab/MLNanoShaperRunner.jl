@@ -3,10 +3,13 @@ using Lux
 function select_and_preprocess((point, atoms); cutoff_radius)
     select_and_preprocess(point, atoms; cutoff_radius)
 end
+
+const MyType{T<:Number} = StructVector{Sphere{T},NamedTuple{(:center,:r),Tuple{Vector{Point3{T}},Vector{T}}},Int64}
+
 function select_and_preprocess(
     point::Batch,
     atoms::AnnotedKDTree{Sphere{T}};
-    cutoff_radius,
+    cutoff_radius::Number,
 ) where {T}
     neighboord =
         Folds.map(point.field) do point
@@ -14,21 +17,9 @@ function select_and_preprocess(
                 point,
                 atoms;
                 cutoff_radius,
-            )::StructVector{
-                Sphere{T},
-                @NamedTuple{center::Vector{Point3{T}}, r::Vector{T}},
-                Int64,
-            }
-        end |> Batch{
-            Vector{
-                StructVector{
-                    Sphere{T},
-                    @NamedTuple{center::Vector{Point3{T}}, r::Vector{T}},
-                    Int64,
-                },
-            },
-        }
-    preprocessing((point, neighboord))
+            )::MyType{T}
+        end |> Batch{Vector{MyType{T}}}
+    symetrise(preprocessing(point, neighboord);cutoff_radius)
 end
 
 function evaluate_if_atoms_in_neighboord(layer, arg::AbstractArray, ps, st; zero_value)
@@ -49,7 +40,7 @@ function general_angular_dense(
 )
     main_chain = DeepSet(
         Chain(
-            WrappedFunction(symetrise(; cutoff_radius, device = on_gpu ? gpu_device() : identity)),
+            WrappedFunction(on_gpu ? gpu_device() : identity),
             main_chain,
         ),
     )
