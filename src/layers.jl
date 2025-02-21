@@ -48,23 +48,26 @@ Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
 Adapt.@adapt_structure PreprocessedData
 # Adapt.@adapt_structure Partial
-@concrete terse struct DeepSet <: Lux.AbstractLuxContainerLayer{(:prepross,)}
+@concrete terse struct DeepSet <: Lux.AbstractLuxWrapperLayer{:prepross}
     prepross
 end
 
 function (f::MLNanoShaperRunner.DeepSet)(
-    (; field, lengths)::ConcatenatedBatch, ps, st::NamedTuple)
-    res,st = Lux.apply(f.prepross, field, ps.prepross, st.prepross)
+    (; field, lengths)::ConcatenatedBatch,
+    ps::NamedTuple,
+    st::NamedTuple
+)
+    res,st = Lux.apply(f.prepross, field, ps, st)
     batched_sum(res, lengths), st
 end
-function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st::NamedTuple)
+function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st)
     f(ConcatenatedBatch(arg), ps, st)
 end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
 
-function _make_id_product!(a, b, n)
+function _make_id_product!(a::AbstractVector{T}, b::AbstractVector{T}, n::Integer) where T
     k = 1
     for i in 1:n
         for j in 1:i
@@ -75,7 +78,7 @@ function _make_id_product!(a, b, n)
     end
 end
 
-function make_id_product(f, n)
+function make_id_product(f, n::Integer)
     MallocArray(Int, 2, n * (n + 1) ÷ 2) do m
         a = view(m, 1, :)
         b = view(m, 2, :)

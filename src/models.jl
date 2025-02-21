@@ -49,7 +49,7 @@ function general_angular_dense(
 )
     main_chain = DeepSet(
         Chain(
-            symetrise(; cutoff_radius, device = on_gpu ? gpu_device() : identity),
+            WrappedFunction(symetrise(; cutoff_radius, device = on_gpu ? gpu_device() : identity)),
             main_chain,
         ),
     )
@@ -57,7 +57,7 @@ function general_angular_dense(
         Parallel(
             vcat,
             main_chain,
-            WrappedFunction{:direct_call}((x -> Float32.(x)) ∘ is_in_van_der_waals),
+            WrappedFunction((x -> Float32.(x)) ∘ is_in_van_der_waals),
         )
     end
     Chain(
