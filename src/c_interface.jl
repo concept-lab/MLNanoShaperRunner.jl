@@ -14,10 +14,10 @@ The global state manipulated by the c interface.
 To use, you must first load the weights using `load_weights` and the input atoms using `load_atoms`.
 Then you can call eval_model to get the field on a certain point.
 """
-Option{T} = Union{T,Nothing}
+Option{T} = Union{T, Nothing}
 mutable struct State
     model::Option{Lux.StatefulLuxLayer}
-    atoms::Option{AnnotedKDTree{Sphere{Float32},:center}}
+    atoms::Option{AnnotedKDTree{Sphere{Float32}, :center}}
     cutoff_radius::Float32
 end
 global_state = State(nothing, nothing, 3.0)
@@ -74,7 +74,7 @@ Base.@ccallable function load_model(path::Cstring)::Cint
             data = deserialize(path)
             @debug "deserialized"
             if typeof(data) <: SerializedModel
-				global_state.model = production_instantiate(data)
+                global_state.model = production_instantiate(data)
                 global_state.cutoff_radius = get_cutoff_radius(global_state.model)
                 0
             else
@@ -117,29 +117,29 @@ function evaluate_model(
     if distance(x, atoms.tree) >= cutoff_radius
         default_value
     else
-		model((Batch(x), atoms)) |> cpu_device() |> first |> only
+        model((Batch(x), atoms)) |> cpu_device() |> first |> only
     end
 end
 function evaluate_model(
         model::Lux.StatefulLuxLayer, x::Batch{Vector{Point3f}}, atoms::AnnotedKDTree;
-		cutoff_radius, default_value = 0.0f0)::Vector{Float32}
+        cutoff_radius, default_value = 0.0f0)::Vector{Float32}
     is_close = map(x.field) do x
         distance(x, atoms.tree) < cutoff_radius
     end
     close_points = x.field[is_close] |> Batch
     if length(close_points.field) > 0
         close_values = model((close_points, atoms)) |> cpu_device()
-		res = fill(default_value,size(x.field)...)
+        res = fill(default_value, size(x.field)...)
         res[is_close] = close_values
-		res
+        res
     else
-         fill(default_value,size(x.field)...)
+        fill(default_value, size(x.field)...)
     end
 end
-Base.@ccallable function eval_model(points::Ptr{CPoint},length::Cint)::Float32
-	points = map(unsafe_wrap(Array, points, length)) do p
-		Point3f(p.x,p.y,p.z)
-	end |> Batch
-	evaluate_model(global_state.model,points,global_state.atoms;cutoff_radius = global_state.cutoff_radius)
-
+Base.@ccallable function eval_model(points::Ptr{CPoint}, length::Cint)::Float32
+    points = map(unsafe_wrap(Array, points, length)) do p
+        Point3f(p.x, p.y, p.z)
+    end |> Batch
+    evaluate_model(global_state.model, points, global_state.atoms;
+        cutoff_radius = global_state.cutoff_radius)
 end

@@ -29,7 +29,7 @@ distance(x::AbstractVector, y::KDTree)::Number = nn(y, x) |> last
 
 returns the signed distance between point p and the mesh
 """
-function signed_distance(p::Point3{T}, mesh::RegionMesh)::T where T<:Number
+function signed_distance(p::Point3{T}, mesh::RegionMesh)::T where {T <: Number}
     id_point, dist = nn(mesh.tree, p)
     x, y, z = mesh.triangles[OffsetInteger{-1, UInt32}(id_point)]
     # @info "triangle" x y z

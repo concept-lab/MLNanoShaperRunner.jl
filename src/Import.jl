@@ -40,7 +40,7 @@ function parse_line(line::String, ::Type{Sphere{T}}) where {T}
     x, y, z, r = parse.(T, split(line))
     Sphere(Point3(x, y, z), r)
 end
-function Base.read(io::IO, T::Type{<:Union{XYZR,PQR}})
+function Base.read(io::IO, T::Type{<:Union{XYZR, PQR}})
     Folds.map(readlines(io)) do line
         parse_line(line, base_type(T))
     end
@@ -72,7 +72,7 @@ end
 params = "$( dirname(dirname(@__FILE__)))/param/param.toml"
 
 function extract_balls(T::Type{<:Number}, prot::MolecularStructure)
-    radii = TOML.parsefile(params)["atoms"]["radius"] |> Dict{String,T}
+    radii = TOML.parsefile(params)["atoms"]["radius"] |> Dict{String, T}
     reduce(prot, 4) do atom
         if typeof(atom) == Atom
             Sphere{T}[Sphere(Point3(atom.coords) .|> T,

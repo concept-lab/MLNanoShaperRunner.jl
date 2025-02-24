@@ -1,4 +1,4 @@
-using Test, ChainRulesTestUtils,Zygote
+using Test, ChainRulesTestUtils, Zygote
 import FiniteDifferences
 using MLNanoShaperRunner, CUDA
 
@@ -28,16 +28,22 @@ a = [1 2
 end
 
 @testset "derivations" begin
-	@test begin
-		jacobian(batched_sum,[1;;2],[0,2])[1] ≈ FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),a ->batched_sum(a,[0,2]),Float32.([1;;2]))[1]
-	end
-	@test begin
-		jacobian(batched_sum,a,[0,2])[1] ≈ FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),a ->batched_sum(a,[0,2]),Float32.(a))[1]
-	end
-	@test begin
-		jacobian(batched_sum,[1;;2],[0,1,2])[1] ≈ FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),a ->batched_sum(a,[0,1,2]),Float32.([1;;2]))[1]
-	end
-	@test begin
-		jacobian(batched_sum,a,[0,2])[1] ≈ FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),a ->batched_sum(a,[0,2]),Float32.(a))[1]
-	end
+    @test begin
+        jacobian(batched_sum, [1;; 2], [0, 2])[1] ≈
+        FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),
+            a -> batched_sum(a, [0, 2]), Float32.([1;; 2]))[1]
+    end
+    @test begin
+        jacobian(batched_sum, a, [0, 2])[1] ≈ FiniteDifferences.jacobian(
+            FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a, [0, 2]), Float32.(a))[1]
+    end
+    @test begin
+        jacobian(batched_sum, [1;; 2], [0, 1, 2])[1] ≈
+        FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),
+            a -> batched_sum(a, [0, 1, 2]), Float32.([1;; 2]))[1]
+    end
+    @test begin
+        jacobian(batched_sum, a, [0, 2])[1] ≈ FiniteDifferences.jacobian(
+            FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a, [0, 2]), Float32.(a))[1]
+    end
 end

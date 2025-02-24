@@ -25,13 +25,12 @@ input of the model
 - point::Point3, the position of the input
 - atoms::StructVector{Sphere}, the atoms in the neighboord
 """
-struct ModelInput{T<:Number}
+struct ModelInput{T <: Number}
     point::Point3{T}
     atoms::StructVector{Sphere{T}} #Set
 end
 
-
-struct PreprocessedData{T<:Number}
+struct PreprocessedData{T <: Number}
     dot::T
     r_1::T
     r_2::T
@@ -41,7 +40,6 @@ end
 PreprocessedData(x::Vector) = PreprocessedData(map(1:5) do f
     getindex.(x, f)
 end...)
-
 
 #enable running on gpu
 Adapt.@adapt_structure Batch
@@ -53,11 +51,11 @@ Adapt.@adapt_structure PreprocessedData
 end
 
 function (f::MLNanoShaperRunner.DeepSet)(
-    (; field, lengths)::ConcatenatedBatch,
-    ps::NamedTuple,
-    st::NamedTuple
+        (; field, lengths)::ConcatenatedBatch,
+        ps::NamedTuple,
+        st::NamedTuple
 )
-    res,st = Lux.apply(f.prepross, field, ps, st)
+    res, st = Lux.apply(f.prepross, field, ps, st)
     batched_sum(res, lengths), st
 end
 function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st)
@@ -67,7 +65,7 @@ function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
 
-function _make_id_product!(a::AbstractVector{T}, b::AbstractVector{T}, n::Integer) where T
+function _make_id_product!(a::AbstractVector{T}, b::AbstractVector{T}, n::Integer) where {T}
     k = 1
     for i in 1:n
         for j in 1:i
@@ -107,7 +105,7 @@ function preprocessing((point, atoms))
     preprocessing(point, atoms)
 end
 function preprocessing(point::Batch{Vector{Point3{T}}},
-    atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}}) where {T}
+        atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}}) where {T}
     lengths = vcat(
         [0], atoms.field .|> size .|> last |> Map(x -> x * (x + 1) ÷ 2) |> cumsum)
     length_tot = last(lengths)
@@ -130,12 +128,12 @@ function preprocessing(point::Batch{Vector{Point3{T}}},
         reshape(StructVector{PreprocessedData{T}}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
 end
 
-function cut(cut_radius::T, r::T)::T where {T<:Number}
+function cut(cut_radius::T, r::T)::T where {T <: Number}
     ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
 end
 
 function symetrise(val::StructArray{PreprocessedData{T}};
-    cutoff_radius::T, device = identity) where {T<:Number}
+        cutoff_radius::T, device = identity) where {T <: Number}
     dot = device(val.dot)
     d_1 = device(val.d_1)
     d_2 = device(val.d_2)
@@ -148,12 +146,12 @@ function symetrise(val::StructArray{PreprocessedData{T}};
         cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2))
 end
 
-function symetrise(val::ConcatenatedBatch{<:StructArray{<:PreprocessedData}};kargs...) 
-    ConcatenatedBatch(symetrise(val.field;kargs...),val.lengths)
+function symetrise(val::ConcatenatedBatch{<:StructArray{<:PreprocessedData}}; kargs...)
+    ConcatenatedBatch(symetrise(val.field; kargs...), val.lengths)
 end
 
 function symetrise(; cutoff_radius::Number, device)
-	Partial(symetrise; cutoff_radius, device)
+    Partial(symetrise; cutoff_radius, device)
 end
 
 scale_factor(x) = x[end:end, :]
@@ -179,19 +177,19 @@ end
 - data::StructVector
 - tree::KDTree
 """
-struct AnnotedKDTree{Type,Property,Subtype}
+struct AnnotedKDTree{Type, Property, Subtype}
     data::StructVector{Type}
     tree::KDTree{Subtype}
     function AnnotedKDTree(data::StructVector, property::StaticSymbol)
-        new{eltype(data),dynamic(property),
+        new{eltype(data), dynamic(property),
             eltype(getproperty(StructArrays.components(data), dynamic(property)))}(
-            data, KDTree(getproperty(data, dynamic(property)); reorder=false))
+            data, KDTree(getproperty(data, dynamic(property)); reorder = false))
     end
 end
 
 function select_neighboord(
-    point::Point, (; data, tree)::AnnotedKDTree{Type};
-    cutoff_radius)::StructVector{Type} where {Type}
+        point::Point, (; data, tree)::AnnotedKDTree{Type};
+        cutoff_radius)::StructVector{Type} where {Type}
     data[inrange(tree, point, cutoff_radius)]
 end
 
@@ -213,7 +211,7 @@ function is_in_van_der_waals(array::AbstractArray{<:PreprocessedData})
     is_in_van_der_waals.(array) |> any
 end
 function is_in_van_der_waals(b::ConcatenatedBatch)
-    reshape(map(1:(length(b.lengths)-1)) do i
+    reshape(map(1:(length(b.lengths) - 1)) do i
             is_in_van_der_waals(get_element(b, i))
         end, 1, :)
 end
