@@ -107,10 +107,10 @@ function light_angular_dense(;
         smoothing = true,
         kargs...)
     general_angular_dense(
-        Chain(Dense(6 => 10, elu), Dense(10 => 5, elu)),
+        Chain(Dense(6 => 10, elu), Dense(10 => 50, elu)),
         Chain(
-            BatchNorm(5 + van_der_waals_channel),
-            Dense(5 + van_der_waals_channel => 10, elu),
+            BatchNorm(50 + van_der_waals_channel),
+            Dense(50 + van_der_waals_channel => 10, elu),
             Dense(10 => 1, sigmoid_fast)
         ),
         ;
@@ -134,12 +134,12 @@ function medium_angular_dense(;
         smoothing = true,
         kargs...)
     general_angular_dense(
-        Chain(Dense(6 => 15, elu), Dense(15 => 10, elu)),
+        Chain(Dense(6 => 15, elu), Dense(15 => 100, elu)),
         Chain(
-            BatchNorm(10 + van_der_waals_channel),
-            Dense(10 + van_der_waals_channel => 5; use_bias = false),
-            Dense(5 => 10, elu),
-            Dense(10 => 1, sigmoid_fast)
+            BatchNorm(100 + van_der_waals_channel),
+            Dense(100 + van_der_waals_channel => 5; use_bias = false),
+            Dense(60 => 15, elu),
+            Dense(15 => 1, sigmoid_fast)
         );
         name = "medium_angular_dense" *
                (van_der_waals_channel ? "_v" : "") *
