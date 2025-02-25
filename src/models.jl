@@ -137,7 +137,7 @@ function medium_angular_dense(;
         Chain(Dense(6 => 15, elu), Dense(15 => 100, elu)),
         Chain(
             BatchNorm(100 + van_der_waals_channel),
-            Dense(100 + van_der_waals_channel => 5; use_bias = false),
+            Dense(100 + van_der_waals_channel => 60; use_bias = false),
             Dense(60 => 15, elu),
             Dense(15 => 1, sigmoid_fast)
         );
