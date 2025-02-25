@@ -171,7 +171,7 @@ struct SerializedModel
 end
 
 function production_instantiate((; model, parameters, states)::SerializedModel)
-    Lux.StatefulLuxLayer(model(), parameters, states |> Lux.testmode)
+    Lux.StatefulLuxLayer{true}(model(), parameters, states |> Lux.testmode)
 end
 
 function get_cutoff_radius(x::Lux.AbstractLuxLayer)
