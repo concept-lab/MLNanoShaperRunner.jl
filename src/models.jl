@@ -80,10 +80,16 @@ function tiny_angular_dense(;
         smoothing = true,
         kargs...)
     general_angular_dense(
-        Chain(Dense(6 => 7, elu), Dense(7 => 4, elu)),
+        Chain(
+            Dense(6 => 7, elu),
+            # trace("before sum"),
+            Dense(7 => 4,softplus )),
         Chain(
             # BatchNorm(4 + van_der_waals_channel),
+            Base.Broadcast.BroadcastFunction(sqrt),
+            # trace("after sum"),
             Dense(4 + van_der_waals_channel => 6, elu),
+            # trace("global intermediary"),
             Dense(6 => 1, sigmoid_fast)
         ),
         ;
@@ -107,9 +113,10 @@ function light_angular_dense(;
         smoothing = true,
         kargs...)
     general_angular_dense(
-        Chain(Dense(6 => 10, elu), Dense(10 => 50, elu)),
+        Chain(Dense(6 => 10, elu), Dense(10 => 50, softplus)),
         Chain(
             # BatchNorm(50 + van_der_waals_channel),
+            Base.Broadcast.BroadcastFunction(sqrt),
             Dense(50 + van_der_waals_channel => 10, elu),
             Dense(10 => 1, sigmoid_fast)
         ),
@@ -137,6 +144,7 @@ function medium_angular_dense(;
         Chain(Dense(6 => 15, elu), Dense(15 => 100, elu)),
         Chain(
             # BatchNorm(100 + van_der_waals_channel),
+            Base.Broadcast.BroadcastFunction(sqrt),
             Dense(100 + van_der_waals_channel => 60; use_bias = false),
             Dense(60 => 15, elu),
             Dense(15 => 1, sigmoid_fast)
