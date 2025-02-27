@@ -56,7 +56,7 @@ function (f::MLNanoShaperRunner.DeepSet)(
         st::NamedTuple
 )
     res, st = Lux.apply(f.prepross, field, ps, st)
-    batched_sum(res, lengths), st
+    batched_sum(res, lengths),st 
 end
 function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st)
     f(ConcatenatedBatch(arg), ps, st)
@@ -157,7 +157,7 @@ end
 scale_factor(x) = x[end:end, :]
 
 function trace(message::String, x)
-    @info message Ref(abs.(x)) .|> [minimum,maximum]
+    @info message Ref(abs.(x)) .|> [minimum,mean,std,maximum]
     x
 end
 
@@ -165,7 +165,7 @@ trace(message::String) = x -> trace(message, x)
 function ChainRulesCore.rrule(::typeof(trace), message, x)
     y = trace(message, x)
     function trace_pullback(y_hat)
-        @info "derivation $message" Ref(abs.(y_hat)) .|> [minimum,maximum]
+        @info "derivation $message" Ref(abs.(y_hat)) .|> [minimum,mean,std,maximum]
         NoTangent(), NoTangent(), y_hat
     end
     return y, trace_pullback
