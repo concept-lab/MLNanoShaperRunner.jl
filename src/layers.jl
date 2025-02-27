@@ -157,7 +157,7 @@ end
 scale_factor(x) = x[end:end, :]
 
 function trace(message::String, x)
-    @info message Ref(abs.(x)) .|> [minimum,mean,std,maximum]
+    @debug message Ref(abs.(x)) .|> [minimum,mean,std,maximum]
     x
 end
 
@@ -165,7 +165,7 @@ trace(message::String) = x -> trace(message, x)
 function ChainRulesCore.rrule(::typeof(trace), message, x)
     y = trace(message, x)
     function trace_pullback(y_hat)
-        @info "derivation $message" Ref(abs.(y_hat)) .|> [minimum,mean,std,maximum]
+        @debug "derivation $message" Ref(abs.(y_hat)) .|> [minimum,mean,std,maximum]
         NoTangent(), NoTangent(), y_hat
     end
     return y, trace_pullback
