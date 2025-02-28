@@ -143,7 +143,7 @@ function symetrise(val::StructArray{PreprocessedData{T}};
         r_1 .+ r_2,
         abs.(r_1 .- r_2),
         d_1 .+ d_2, abs.(d_1 .- d_2),
-        cut.(cutoff_radius, r_1) .* cut.(cutoff_radius, r_2))
+        cut.(cutoff_radius, d_1) .* cut.(cutoff_radius, d_2))
 end
 
 function symetrise(val::ConcatenatedBatch{<:StructArray{<:PreprocessedData}}; kargs...)
