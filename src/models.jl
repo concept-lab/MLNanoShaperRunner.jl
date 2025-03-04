@@ -5,21 +5,22 @@ function select_and_preprocess((point, atoms); cutoff_radius)
 end
 
 const MyType{T <: Number} = StructVector{
-    Sphere{T}, NamedTuple{(:center, :r), Tuple{Vector{Point3{T}}, Vector{T}}}, Int64}
+    Sphere{T}}
 
 function select_and_preprocess(
         point::Batch,
         atoms::AnnotedKDTree{Sphere{T}};
         cutoff_radius::Number
 ) where {T}
-    neighboord = Folds.map(point.field) do point
+    # neighboord = Folds.map(point.field) do point
+    neighboord = map(point.field) do point
         select_neighboord(
             point,
             atoms;
             cutoff_radius
         )::MyType{T}
     end |> Batch{Vector{MyType{T}}}
-    symetrise(preprocessing(point, neighboord); cutoff_radius)
+    preprocessing(point, neighboord; cutoff_radius)
 end
 
 function evaluate_if_atoms_in_neighboord(layer, arg::AbstractArray, ps, st; zero_value)
@@ -81,19 +82,24 @@ function tiny_angular_dense(;
         kargs...)
     general_angular_dense(
         Chain(
-            trace("input"),
+            NoOpLayer(),
+            # trace("input"),
             Dense(6 => 7, elu),
             Dense(7 => 4,elu),
-            trace("before sum")),
+            NoOpLayer()),
+            # trace("before sum")),
         Chain(
             LayerNorm((4+van_der_waals_channel,)),
             # Base.Broadcast.BroadcastFunction(sqrt),
-            trace("after sum"),
+            NoOpLayer(),
+            # trace("after sum"),
             Dense(4 + van_der_waals_channel => 6, elu),
-            trace("global intermediary"),
+            NoOpLayer(),
+            # trace("global intermediary"),
             LayerNorm((6,)),
             Dense(6 => 1, sigmoid_fast),
-            trace("output")
+            NoOpLayer()
+            # trace("output")
         ),
         ;
         name = "tiny_angular_dense" *

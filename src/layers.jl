@@ -85,47 +85,60 @@ function make_id_product(f, n::Integer)
     end
 end
 
-function preprocessing!(d_1, d_2, r_1, r_2, dot, (; point, atoms)::ModelInput{T}) where {T}
+function preprocessing!(ret,point::Point3{T}, atoms::StructVector{Sphere{T}};cutoff_radius::T) where {T}
     (; r, center) = atoms
-    make_id_product(length(atoms)) do prod_1, prod_2
-        n_tot = length(prod_1)
-        distances = euclidean.(Ref(point), center)
-        d_1 .= distances[prod_1]
-        r_1 .= r[prod_1]
-        d_2 .= distances[prod_2]
-        r_2 .= r[prod_2]
-        map!(dot, 1:n_tot) do n
-            (center[prod_1[n]] - point) ⋅ (center[prod_2[n]] - point) /
-            (d_1[n] * d_2[n] + 1.0f-8)
-        end
+    n = size(ret,2)
+    d_1 = MallocArray{T}(undef,n)
+    d_2 = MallocArray{T}(undef,n)
+    r_1 = MallocArray{T}(undef,n)
+    r_2 = MallocArray{T}(undef,n)
+    _center = MallocArray{Point3{T}}(undef,length(atoms))
+    distances = MallocArray{T}(undef,length(atoms))
+    dot= @view ret[1,:]
+    r_s= @view ret[2,:]
+    r_d= @view ret[3,:]
+    d_s= @view ret[4,:]
+    d_d= @view ret[5,:]
+    coeff= @view ret[6,:]
+
+    try 
+        _center .= center .- point
+        distances .= euclidean.(Ref(zero(point)),_center)
+        make_id_product(length(atoms)) do prod_1, prod_2
+            d_1 .= distances[prod_1]
+            r_1 .= r[prod_1]
+            d_2 .= distances[prod_2]
+            r_2 .= r[prod_2]
+            d_s .= d_1 .+ d_2
+            d_d .= abs.(d_1 .- d_2)
+            r_s .= r_1 .+ r_2
+            r_d .= abs.(r_1 .- r_2)
+            dot .= (_center[prod_1] .⋅ _center[prod_2] .+ 1f-8) ./ (d_1 .* d_2 .+ 1.0f-8)
+            coeff .=  cut.(cutoff_radius, d_1) .* cut.(cutoff_radius, d_2)
+    end
+    finally
+        free(d_1)
+        free(d_2)
+        free(r_1)
+        free(r_2)
     end
 end
 
-function preprocessing((point, atoms))
-    preprocessing(point, atoms)
-end
 function preprocessing(point::Batch{Vector{Point3{T}}},
-        atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}}) where {T}
+        atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}};cutoff_radius::T) where {T}
     lengths = vcat(
         [0], atoms.field .|> size .|> last |> Map(x -> x * (x + 1) ÷ 2) |> cumsum)
     length_tot = last(lengths)
-    d_1 = Vector{T}(undef, length_tot)
-    d_2 = Vector{T}(undef, length_tot)
-    r_1 = Vector{T}(undef, length_tot)
-    r_2 = Vector{T}(undef, length_tot)
-    dot = Vector{T}(undef, length_tot)
-    Folds.foreach(eachindex(atoms.field)) do i
+    ret = Matrix{T}(undef,6,length_tot)
+    # Folds.foreach(eachindex(atoms.field)) do i
+    foreach(eachindex(atoms.field)) do i
         preprocessing!(
-            view(d_1, get_slice(lengths, i)),
-            view(d_2, get_slice(lengths, i)),
-            view(r_1, get_slice(lengths, i)),
-            view(r_2, get_slice(lengths, i)),
-            view(dot, get_slice(lengths, i)),
-            ModelInput(point.field[i], atoms.field[i])
+            view(ret,:, get_slice(lengths, i)),
+            point.field[i], atoms.field[i];
+            cutoff_radius
         )
     end
-    ConcatenatedBatch(
-        reshape(StructVector{PreprocessedData{T}}((dot, r_1, r_2, d_1, d_2)), 1, :), lengths)
+    ConcatenatedBatch(ret, lengths)
 end
 
 function cut(cut_radius::T, r::T)::T where {T <: Number}
@@ -133,12 +146,12 @@ function cut(cut_radius::T, r::T)::T where {T <: Number}
 end
 
 function symetrise(val::StructArray{PreprocessedData{T}};
-        cutoff_radius::T, device = identity) where {T <: Number}
-    dot = device(val.dot)
-    d_1 = device(val.d_1)
-    d_2 = device(val.d_2)
-    r_1 = device(val.r_1)
-    r_2 = device(val.r_2)
+        cutoff_radius::T) where {T <: Number}
+    dot = val.dot
+    d_1 = val.d_1
+    d_2 = val.d_2
+    r_1 = val.r_1
+    r_2 = val.r_2
     vcat(dot,
         r_1 .+ r_2,
         abs.(r_1 .- r_2),
@@ -187,7 +200,7 @@ struct AnnotedKDTree{Type, Property, Subtype}
     end
 end
 
-function select_neighboord(
+@inline function select_neighboord(
         point::Point, (; data, tree)::AnnotedKDTree{Type};
         cutoff_radius)::StructVector{Type} where {Type}
     data[inrange(tree, point, cutoff_radius)]

@@ -37,7 +37,8 @@ end
 function batched_sum!(a::AbstractMatrix{T}, b::AbstractMatrix{T},
         nb_elements::AbstractVector{Int}) where {T}
     nb_lines = size(b, 1)
-    Folds.foreach(0:(length(a) - 1)) do identifiant
+    # Folds.foreach(0:(length(a) - 1)) do identifiant
+    foreach(0:(length(a) - 1)) do identifiant
         i, n = identifiant % nb_lines + 1, identifiant ÷ nb_lines + 1
         if n + 1 > length(nb_elements)
             # we are launching mor threads than required
@@ -73,7 +74,8 @@ function ChainRulesCore.rrule(::typeof(batched_sum), b::AbstractMatrix, nb_eleme
     function batched_sum_pullback(delta)::Tuple{NoTangent, Any, NoTangent}
         delta_b = @thunk begin
             delta_b = similar(b)
-            Folds.foreach(minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements)) - 1)) do i
+            # Folds.foreach(minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements)) - 1)) do i
+            foreach(minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements)) - 1)) do i
                 delta_b[:, (nb_elements[i] + 1):nb_elements[i + 1]] .= delta[:, i]
             end
             delta_b
@@ -106,7 +108,8 @@ function ChainRulesCore.rrule(
     indexes = 1:n
     res = alloc_concatenated(sub_array, get_slice(n) |> last)
     pullbacks = Array{Function}(undef, n)
-    Folds.foreach(indexes) do i
+    # Folds.foreach(indexes) do i
+    foreach(indexes) do i
         res[fill(:, ndims(sub_array) - 1)..., get_slice(i)], pullbacks[i] = rrule_via_ad(
             config, arrays, i)
     end
