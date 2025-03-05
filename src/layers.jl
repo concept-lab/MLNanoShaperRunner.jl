@@ -65,6 +65,25 @@ function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
 
+@concrete terse struct FixSizedDeepSet <: Lux.AbstractLuxWrapperLayer{:prepross}
+    prepross
+    size::Int
+end
+
+function (f::MLNanoShaperRunner.FixSizedDeepSet)(
+        (; field, lengths)::ConcatenatedBatch,
+        ps::NamedTuple,
+        st::NamedTuple
+)
+    res, st = Lux.apply(f.prepross, field, ps, st)
+    batched_sum(res, lengths),st 
+end
+function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st)
+    f(ConcatenatedBatch(arg), ps, st)
+end
+function (f::DeepSet)(set::AbstractArray, ps, st)
+    f(Batch([set]), ps, st)
+end
 function _make_id_product!(a::AbstractVector{T}, b::AbstractVector{T}, n::Integer) where {T}
     k = 1
     for i in 1:n
@@ -217,11 +236,12 @@ Lux.initialstates(::AbstractRNG, ::PreprocessingLayer) = (;)
     ignore_derivatives() do
         fun(arg)
     end
-function is_in_van_der_waals((; d_1, d_2, r_1, r_2)::PreprocessedData)
-    d_1 <= r_1 || d_2 <= r_2
-end
-function is_in_van_der_waals(array::AbstractArray{<:PreprocessedData})
-    is_in_van_der_waals.(array) |> any
+
+function is_in_van_der_waals(array::AbstractArray)
+    any(axes(array,2)) do i
+        array[4,i] < array[2,i] ||
+        array[5,i] < array[3,i]
+    end
 end
 function is_in_van_der_waals(b::ConcatenatedBatch)
     reshape(map(1:(length(b.lengths) - 1)) do i

@@ -150,12 +150,14 @@ function medium_angular_dense(;
         smoothing = true,
         kargs...)
     general_angular_dense(
-        Chain(Dense(6 => 15, elu), Dense(15 => 100, elu)),
+        Chain(Dense(6 => 15, relu), Dense(15 => 100, relu)),
         Chain(
             # BatchNorm(100 + van_der_waals_channel),
             # Base.Broadcast.BroadcastFunction(sqrt),
+            LayerNorm((100+van_der_waals_channel,)),
             Dense(100 + van_der_waals_channel => 60; use_bias = false),
-            Dense(60 => 15, elu),
+            Dense(60 => 15, relu),
+            LayerNorm((15,)),
             Dense(15 => 1, sigmoid_fast)
         );
         name = "medium_angular_dense" *
