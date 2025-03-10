@@ -64,26 +64,6 @@ end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
-
-@concrete terse struct FixSizedDeepSet <: Lux.AbstractLuxWrapperLayer{:prepross}
-    prepross
-    size::Int
-end
-
-function (f::MLNanoShaperRunner.FixSizedDeepSet)(
-        (; field, lengths)::ConcatenatedBatch,
-        ps::NamedTuple,
-        st::NamedTuple
-)
-    res, st = Lux.apply(f.prepross, field, ps, st)
-    batched_sum(res, lengths),st 
-end
-function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st)
-    f(ConcatenatedBatch(arg), ps, st)
-end
-function (f::DeepSet)(set::AbstractArray, ps, st)
-    f(Batch([set]), ps, st)
-end
 function _make_id_product!(a::AbstractVector{T}, b::AbstractVector{T}, n::Integer) where {T}
     k = 1
     for i in 1:n

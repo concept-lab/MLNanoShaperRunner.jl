@@ -18,10 +18,16 @@ function select_and_preprocess(
             point,
             atoms;
             cutoff_radius
-        )::MyType{T}
-    end |> Batch{Vector{MyType{T}}}
+        )
+    end |> Batch
     preprocessing(point, neighboord; cutoff_radius)
 end
+
+@inline select_and_preprocess(
+    point::Point3,
+    atoms;
+    cutoff_radius
+) = select_and_preprocess(Batch([point]),atoms;cutoff_radius)
 
 function evaluate_if_atoms_in_neighboord(layer, arg::AbstractArray, ps, st; zero_value)
     if length(arg) == 0
