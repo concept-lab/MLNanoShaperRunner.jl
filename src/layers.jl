@@ -141,7 +141,8 @@ function preprocessing(point::Batch{Vector{Point3{T}}},
 end
 
 function cut(cut_radius::T, r::T)::T where {T <: Number}
-    ifelse(r >= cut_radius, zero(T), (1 + cos(π * r / cut_radius)) / 2)
+    k = r/cut_radius
+    ifelse(0 < k <= .9, one(T),zero(T)) + ifelse(.9< k <=1 , 10*(1-k),zero(T))
 end
 
 function symetrise(val::StructArray{PreprocessedData{T}};

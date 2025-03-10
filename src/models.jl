@@ -88,24 +88,15 @@ function tiny_angular_dense(;
         kargs...)
     general_angular_dense(
         Chain(
-            NoOpLayer(),
-            # trace("input"),
-            Dense(6 => 7, elu),
-            Dense(7 => 4,elu),
-            NoOpLayer()),
-            # trace("before sum")),
+            Dense(6 => 7, relu),
+            Dense(7 => 4,relu)
+            ),
         Chain(
+            relu6,
             LayerNorm((4+van_der_waals_channel,)),
-            # Base.Broadcast.BroadcastFunction(sqrt),
-            NoOpLayer(),
-            # trace("after sum"),
-            Dense(4 + van_der_waals_channel => 6, elu),
-            NoOpLayer(),
-            # trace("global intermediary"),
+            Dense(4 + van_der_waals_channel => 6, relu),
             LayerNorm((6,)),
             Dense(6 => 1, sigmoid_fast),
-            NoOpLayer()
-            # trace("output")
         ),
         ;
         name = "tiny_angular_dense" *
