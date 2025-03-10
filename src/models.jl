@@ -4,9 +4,7 @@ function select_and_preprocess((point, atoms); cutoff_radius)
     select_and_preprocess(point, atoms; cutoff_radius)
 end
 
-const MyType{T <: Number} = StructVector{
-    Sphere{T}}
-
+const MyType{T <: Number} = StructVector{Sphere{T}, @NamedTuple{center::Vector{Point{3, T}}, r::Vector{T}}, Int64}
 function select_and_preprocess(
         point::Batch,
         atoms::AnnotedKDTree{Sphere{T}};
@@ -19,7 +17,7 @@ function select_and_preprocess(
             atoms;
             cutoff_radius
         )
-    end |> Batch
+    end |> Batch{Vector{MyType{T}}}
     preprocessing(point, neighboord; cutoff_radius)
 end
 
