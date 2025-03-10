@@ -142,7 +142,7 @@ end
 
 function cut(cut_radius::T, r::T)::T where {T <: Number}
     k = r/cut_radius
-    ifelse(0 < k <= .9, one(T),zero(T)) + ifelse(.9< k <=1 , 10*(1-k),zero(T))
+    ifelse(0 <= k <= .5, one(T),zero(T)) + ifelse(.5< k <=1 , 2*(1-k),zero(T))
 end
 
 function symetrise(val::StructArray{PreprocessedData{T}};
