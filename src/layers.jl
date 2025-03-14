@@ -87,10 +87,6 @@ end
 function preprocessing!(ret,point::Point3{T}, atoms::StructVector{Sphere{T}};cutoff_radius::T) where {T}
     (; r, center) = atoms
     n = size(ret,2)
-    d_1 = MallocArray{T}(undef,n)
-    d_2 = MallocArray{T}(undef,n)
-    r_1 = MallocArray{T}(undef,n)
-    r_2 = MallocArray{T}(undef,n)
     _center = MallocArray{Point3{T}}(undef,length(atoms))
     distances = MallocArray{T}(undef,length(atoms))
     dot= @view ret[1,:]
@@ -103,30 +99,44 @@ function preprocessing!(ret,point::Point3{T}, atoms::StructVector{Sphere{T}};cut
     try 
         _center .= center .- point
         distances .= euclidean.(Ref(zero(point)),_center)
-        make_id_product(length(atoms)) do prod_1, prod_2
-            d_1 .= distances[prod_1]
-            r_1 .= r[prod_1]
-            d_2 .= distances[prod_2]
-            r_2 .= r[prod_2]
-            d_s .= d_1 .+ d_2
-            d_d .= abs.(d_1 .- d_2)
-            r_s .= r_1 .+ r_2
-            r_d .= abs.(r_1 .- r_2)
-            dot .= (_center[prod_1] .⋅ _center[prod_2] .+ 1f-8) ./ (d_1 .* d_2 .+ 1.0f-8)
-            coeff .=  cut.(cutoff_radius, d_1) .* cut.(cutoff_radius, d_2)
-    end
+        i = 1
+        for p1 in 1:length(atoms)
+            for p2 in 1:p1
+                d_1= distances[p1]
+                d_2= distances[p2]
+                r_1=r[p1]
+                r_2=r[p2]
+                r_s[i]=r_1 +r_2
+                r_d[i]=abs(r_1 - r_2)
+                d_s[i] = d_1 + d_2
+                d_d[i] = abs(d_1 - d_2)
+                dot[i]=0
+                for j in 1:3
+                    dot[i] += _center[p1][j]* _center[p2][j]
+                end
+                dot[i] += 1f-8
+                dot[i] /= d_1 * d_2 + 1.0f-8
+                coeff[i] =  cut(cutoff_radius, d_1) * cut(cutoff_radius, d_2)
+                i += 1
+            end
+        end
     finally
-        free(d_1)
-        free(d_2)
-        free(r_1)
-        free(r_2)
+        free(distances)
+        free(_center)
     end
 end
-
+function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
+    l = field |> Map(last∘size) |> Map(x -> x * (x + 1) ÷ 2)
+    lengths = zeros(Int,length(field)+1)
+    for (i,s) in zip(eachindex(field),l)
+        lengths[i+1] = lengths[i] + s
+    end
+    lengths
+end
 function preprocessing(point::Batch{Vector{Point3{T}}},
         atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}};cutoff_radius::T) where {T}
-    lengths = vcat(
-        [0], atoms.field .|> size .|> last |> Map(x -> x * (x + 1) ÷ 2) |> cumsum)
+    lengths = get_batch_lengths(atoms.field)
+    # @assert all(lengths .==vcat([0],cumsum(atoms.field .|> size .|> last .|> last |>Map(x -> x * (x + 1) ÷ 2))))
     length_tot = last(lengths)
     ret = Matrix{T}(undef,6,length_tot)
     # Folds.foreach(eachindex(atoms.field)) do i
@@ -167,7 +177,7 @@ function symetrise(; cutoff_radius::Number, device)
     Partial(symetrise; cutoff_radius, device)
 end
 
-scale_factor(x) = x[end:end, :]
+scale_factor(x) = @view x[end:end, :]
 
 function trace(message::String, x)
     @debug message Ref(abs.(x)) .|> [minimum,mean,std,maximum]

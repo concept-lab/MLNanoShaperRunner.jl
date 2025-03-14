@@ -11,13 +11,14 @@ function select_and_preprocess(
         cutoff_radius::Number
 ) where {T}
     # neighboord = Folds.map(point.field) do point
-    neighboord = map(point.field) do point
-        select_neighboord(
+    neighboord =Batch(StructVector{Sphere{T}}[])
+    for point in point.field
+        push!(neighboord.field,select_neighboord(
             point,
             atoms;
             cutoff_radius
-        )
-    end |> Batch{Vector{MyType{T}}}
+        ))
+    end
     preprocessing(point, neighboord; cutoff_radius)
 end
 
