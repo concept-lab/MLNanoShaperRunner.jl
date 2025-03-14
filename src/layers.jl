@@ -13,7 +13,6 @@ using Folds
 using Transducers
 using Static
 using StaticTools
-using CUDA
 
 function terse end
 
