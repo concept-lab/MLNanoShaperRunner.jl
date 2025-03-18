@@ -63,29 +63,9 @@ end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
 end
-function _make_id_product!(a::AbstractVector{T}, b::AbstractVector{T}, n::Integer) where {T}
-    k = 1
-    for i in 1:n
-        for j in 1:i
-            a[k] = i
-            b[k] = j
-            k += 1
-        end
-    end
-end
-
-function make_id_product(f, n::Integer)
-    MallocArray(Int, 2, n * (n + 1) ÷ 2) do m
-        a = view(m, 1, :)
-        b = view(m, 2, :)
-        _make_id_product!(a, b, n)
-        f(a, b)
-    end
-end
 
 function preprocessing!(ret,point::Point3{T}, atoms::StructVector{Sphere{T}};cutoff_radius::T) where {T}
     (; r, center) = atoms
-    n = size(ret,2)
     _center = MallocArray{Point3{T}}(undef,length(atoms))
     distances = MallocArray{T}(undef,length(atoms))
     dot= @view ret[1,:]
@@ -153,28 +133,6 @@ end
 function cut(cut_radius::T, r::T)::T where {T <: Number}
     k = r/cut_radius
     ifelse(0 <= k <= .5, one(T),zero(T)) + ifelse(.5< k <=1 , 2*(1-k),zero(T))
-end
-
-function symetrise(val::StructArray{PreprocessedData{T}};
-        cutoff_radius::T) where {T <: Number}
-    dot = val.dot
-    d_1 = val.d_1
-    d_2 = val.d_2
-    r_1 = val.r_1
-    r_2 = val.r_2
-    vcat(dot,
-        r_1 .+ r_2,
-        abs.(r_1 .- r_2),
-        d_1 .+ d_2, abs.(d_1 .- d_2),
-        cut.(cutoff_radius, d_1) .* cut.(cutoff_radius, d_2))
-end
-
-function symetrise(val::ConcatenatedBatch{<:StructArray{<:PreprocessedData}}; kargs...)
-    ConcatenatedBatch(symetrise(val.field; kargs...), val.lengths)
-end
-
-function symetrise(; cutoff_radius::Number, device)
-    Partial(symetrise; cutoff_radius, device)
 end
 
 scale_factor(x) = @view x[end:end, :]
