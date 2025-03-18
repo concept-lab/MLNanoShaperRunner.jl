@@ -17,7 +17,7 @@ Then you can call eval_model to get the field on a certain point.
 Option{T} = Union{T, Nothing}
 mutable struct State
     model::Option{Lux.StatefulLuxLayer}
-    atoms::Option{AnnotedKDTree{Sphere{Float32}, :center}}
+    atoms::Option{RegularGrid{Float32}}
 end
 global_state = State(nothing, nothing)
 

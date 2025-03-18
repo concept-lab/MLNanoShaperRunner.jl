@@ -7,7 +7,7 @@ end
 const MyType{T <: Number} = StructVector{Sphere{T}, @NamedTuple{center::Vector{Point{3, T}}, r::Vector{T}}, Int64}
 function select_and_preprocess(
         point::Batch,
-        atoms::AnnotedKDTree{Sphere{T}};
+        atoms::RegularGrid{T};
         cutoff_radius::Number
 ) where {T}
     # neighboord = Folds.map(point.field) do point

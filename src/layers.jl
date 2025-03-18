@@ -169,9 +169,9 @@ struct AnnotedKDTree{Type, Property, Subtype}
 end
 
 @inline function select_neighboord(
-        point::Point, (; data, tree)::AnnotedKDTree{Type};
-        cutoff_radius)::StructVector{Type} where {Type}
-    data[inrange(tree, point, cutoff_radius)]
+        point::Point, grid::RegularGrid{T};
+        cutoff_radius)::StructVector{Sphere{T}} where {T}
+    _inrange(grid,point)
 end
 
 struct PreprocessingLayer <: Lux.AbstractLuxLayer

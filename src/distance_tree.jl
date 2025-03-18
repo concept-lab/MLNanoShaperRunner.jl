@@ -79,19 +79,20 @@ function RegularGrid(points::StructVector{Sphere{T}},radius::T) where T
     RegularGrid(grid,radius,start)
 end
 
-function _inrange(g::RegularGrid{T},p::Point3{T}) where T
+function _inrange(g::RegularGrid{T},p::Point3{T})::StructVector{Sphere{T}} where T
     x,y,z = floor.(Int, (p .- g.start) ./ g.radius)
+    r2 = g.radius^2
     dx = [-1,-1,-1, -1,-1,-1, -1,-1,-1,  0, 0, 0,  0,0,0,  0,0,0,  1, 1, 1,  1,1,1,  1,1,1]
     dy = [-1,-1,-1,  0, 0, 0,  1, 1, 1, -1,-1,-1,  0,0,0,  1,1,1, -1,-1,-1,  0,0,0,  1,1,1]
     dz = [-1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1,0,1, -1,0,1, -1, 0, 1, -1,0,1, -1,0,1]
-    res = Sphere{T}[]
+    res = StructVector{Sphere{T}}((;center=Point3{T}[],r=T[]))
     for i in 1:27
         x1 = x + dx[i]
         y1 = y + dy[i]
         z1 = z + dz[i]
         if x1 in axes(g.grid,1) && y1 in axes(g.grid,2) && z1 in axes(g.grid,3)
             for s in g.grid[x1,y1,z1]
-                if sum((p .- s.center) .^2) < g.radius^2
+                if sum((p .- s.center) .^2) < r2
                     push!(res,s)
                 end
             end
