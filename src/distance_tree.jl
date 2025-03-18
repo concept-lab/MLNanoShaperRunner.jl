@@ -29,6 +29,7 @@ distance(x::AbstractVector, y::KDTree)::Number = nn(y, x) |> last
     signed_distance(p::Point3, mesh::RegionMesh)::Number
 
 returns the signed distance between point p and the mesh
+a positive distance means that we are inside the mesh
 """
 function signed_distance(p::Point3{T}, mesh::RegionMesh)::T where {T <: Number}
     id_point, dist = nn(mesh.tree, p)

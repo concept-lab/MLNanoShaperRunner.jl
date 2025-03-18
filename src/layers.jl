@@ -125,9 +125,10 @@ function preprocessing!(ret,point::Point3{T}, atoms::StructVector{Sphere{T}};cut
     end
 end
 function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
-    l = field |> Map(last∘size) |> Map(x -> x * (x + 1) ÷ 2)
     lengths = zeros(Int,length(field)+1)
-    for (i,s) in zip(eachindex(field),l)
+    for i in eachindex(field)
+        l = length(field[i])
+        s = l * (l + 1) ÷ 2
         lengths[i+1] = lengths[i] + s
     end
     lengths
