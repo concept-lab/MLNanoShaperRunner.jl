@@ -18,15 +18,15 @@ function batched_sum!(a::AbstractMatrix{T}, b::AbstractMatrix{T},
         nb_elements::AbstractVector{Int}) where {T}
     nb_lines = size(b, 1)
     # Folds.foreach(0:(length(a) - 1)) do identifiant
-    foreach(0:(length(a) - 1)) do identifiant
+    for identifiant in (0:(length(a) - 1))
         i, n = identifiant % nb_lines + 1, identifiant ÷ nb_lines + 1
         if n + 1 > length(nb_elements)
             # we are launching mor threads than required
             return
         end
-        a[i, n] = zero(T)
+        @inbounds a[i, n] = zero(T)
         for j in (nb_elements[n] + 1):nb_elements[n + 1]
-            a[i, n] += b[i, j]
+            @inbounds a[i, n] += b[i, j]
         end
     end
 end

@@ -79,7 +79,7 @@ function preprocessing!(ret,point::Point3{T}, atoms::StructVector{Sphere{T}};cut
         _center .= center .- point
         distances .= euclidean.(Ref(zero(point)),_center)
         i = 1
-        for p1 in 1:length(atoms)
+        @inbounds for p1 in 1:length(atoms)
             for p2 in 1:p1
                 d_1= distances[p1]
                 d_2= distances[p2]
@@ -113,14 +113,14 @@ function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
     end
     lengths
 end
-function preprocessing(point::Batch{Vector{Point3{T}}},
+function preprocessing(point::Batch{<:AbstractVector{Point3{T}}},
         atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}};cutoff_radius::T) where {T}
     lengths = get_batch_lengths(atoms.field)
     # @assert all(lengths .==vcat([0],cumsum(atoms.field .|> size .|> last .|> last |>Map(x -> x * (x + 1) ÷ 2))))
     length_tot = last(lengths)
     ret = Matrix{T}(undef,6,length_tot)
     # Folds.foreach(eachindex(atoms.field)) do i
-    foreach(eachindex(atoms.field)) do i
+    for i in eachindex(atoms.field)
         preprocessing!(
             view(ret,:, get_slice(lengths, i)),
             point.field[i], atoms.field[i];
