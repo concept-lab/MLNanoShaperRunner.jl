@@ -66,7 +66,7 @@ end
 
 @concrete terse struct FixedSizeDeepSet <: Lux.AbstractLuxWrapperLayer{:prepross}
     prepross
-    size::Int
+    sentry_size::Int
 end
 
 function (f::FixedSizeDeepSet)(
@@ -74,8 +74,9 @@ function (f::FixedSizeDeepSet)(
     ps::NamedTuple,
     st::NamedTuple
 )
+    batched_input = reshape(batched_input,size(batched_input)[begin:end-2]...,:)
     res, st = Lux.apply(f.prepross, batched_input, ps, st)
-    res = reshape(res, size(res)[begin:end-1], f.size, :)
+    res = reshape(res, size(res)[begin:end-1], f.sentry_size, :)
     reshape(sum(res; dims=ndims(res) - 1), size(res)[begin:end-1]..., :), st
 end
 
@@ -143,6 +144,23 @@ function preprocessing(point::Batch{<:AbstractVector{Point3{T}}},
         )
     end
     ConcatenatedBatch(ret, lengths)
+end
+
+function preprocessing(point::Batch{<:AbstractVector{Point3{T}}},
+    atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}},max_nb_atoms::Int; cutoff_radius::T) where {T}
+    slice_length = max_nb_atoms * (max_nb_atoms +1) ÷ 2
+    length_tot = length(atoms.field) * slice_length
+    ret = zeros(T, 6, length_tot)
+    # Folds.foreach(eachindex(atoms.field)) do i
+    for i in eachindex(atoms.field)
+        first_atoms = @view atoms.field[i][begin:min(length(atoms.field[i]),max_nb_atoms)]
+        preprocessing!(
+            view(ret, :,(1+(i-1)*slice_length):(1+i*slice_length) ),
+            point.field[i], first_atoms;
+            cutoff_radius
+        )
+    end
+    reshape(ret,6,slice_length,:)
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
