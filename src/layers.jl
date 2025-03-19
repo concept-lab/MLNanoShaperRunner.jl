@@ -49,7 +49,7 @@ Adapt.@adapt_structure PreprocessedData
     prepross
 end
 
-function (f::MLNanoShaperRunner.DeepSet)(
+function (f::DeepSet)(
         (; field, lengths)::ConcatenatedBatch,
         ps::NamedTuple,
         st::NamedTuple
@@ -57,11 +57,26 @@ function (f::MLNanoShaperRunner.DeepSet)(
     res, st = Lux.apply(f.prepross, field, ps, st)
     batched_sum(res, lengths),st 
 end
-function (f::MLNanoShaperRunner.DeepSet)(arg::Batch, ps, st)
+function (f::DeepSet)(arg::Batch, ps, st)
     f(ConcatenatedBatch(arg), ps, st)
 end
 function (f::DeepSet)(set::AbstractArray, ps, st)
     f(Batch([set]), ps, st)
+end
+
+@concrete terse struct FixedSizeDeepSet <: Lux.AbstractLuxWrapperLayer{:prepross}
+    prepross
+    size::Int
+end
+
+function (f::FixedSizeDeepSet)(
+        batched_input::AbstractArray,
+        ps::NamedTuple,
+        st::NamedTuple
+)
+    res, st = Lux.apply(f.prepross, batched_input, ps, st)
+    res = reshape(res,size(res)[begin:end-1],f.size,:)
+    reshape(sum(res;dims = ndims(res) - 1 );size(res)[begin:end-1],:),st 
 end
 
 function preprocessing!(ret,point::Point3{T}, atoms::StructVector{Sphere{T}};cutoff_radius::T) where {T}
