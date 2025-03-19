@@ -70,8 +70,8 @@ function RegularGrid(points::StructVector{Sphere{T}},radius::T) where T
     mins = map(1:3) do k minimum(p -> p[k],points.center) end
     maxes = map(1:3) do k maximum(p -> p[k],points.center) end
     start = Point3(mins .- radius...)
-    x_m,y_m,z_m = floor.(Int,(maxes .- mins) ./ radius .+ 1)
-    pos  = map(points.center) do point floor.(Int, (point .- start) ./ radius) end 
+    x_m,y_m,z_m = floor.(Int,(maxes .- mins) ./ radius) .+ 1
+    pos  = map(points.center) do point floor.(Int, (point .- start) ./ radius) .+ 1  end 
     grid = [Sphere{T}[] for _ in 1:x_m, _ in 1:y_m, _ in 1:z_m]
     for i in eachindex(points)
         push!(grid[pos[i]...],points[i])
@@ -80,7 +80,7 @@ function RegularGrid(points::StructVector{Sphere{T}},radius::T) where T
 end
 
 function _inrange(g::RegularGrid{T},p::Point3{T})::StructVector{Sphere{T}} where T
-    x,y,z = floor.(Int, (p .- g.start) ./ g.radius)
+    x,y,z = floor.(Int, (p .- g.start) ./ g.radius) .+1
     r2 = g.radius^2
     dx = [-1,-1,-1, -1,-1,-1, -1,-1,-1,  0, 0, 0,  0,0,0,  0,0,0,  1, 1, 1,  1,1,1,  1,1,1]
     dy = [-1,-1,-1,  0, 0, 0,  1, 1, 1, -1,-1,-1,  0,0,0,  1,1,1, -1,-1,-1,  0,0,0,  1,1,1]
