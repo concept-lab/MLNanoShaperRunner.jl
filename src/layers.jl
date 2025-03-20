@@ -74,10 +74,11 @@ function (f::FixedSizeDeepSet)(
     ps::NamedTuple,
     st::NamedTuple
 )
-    batched_input = reshape(batched_input,size(batched_input)[begin:end-2]...,:)
+    @assert size(batched_input)[end-1] == f.sentry_size "got $(size(batched_input)) which is incorrect, expected dim $(f.sentry_size) for axe $(ndims(batched_input) -1)"
+    batched_input = reshape(batched_input, size(batched_input)[begin:end-2]..., :)
     res, st = Lux.apply(f.prepross, batched_input, ps, st)
-    res = reshape(res, size(res)[begin:end-1], f.sentry_size, :)
-    reshape(sum(res; dims=ndims(res) - 1), size(res)[begin:end-1]..., :), st
+    res = reshape(res, size(res)[begin:end-1]..., f.sentry_size, :)
+    reshape(sum(res; dims=ndims(res) - 1), size(res)[begin:end-2]..., :), st
 end
 
 function preprocessing!(ret, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
@@ -129,8 +130,10 @@ function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
     end
     lengths
 end
-function preprocessing(point::Batch{<:AbstractVector{Point3{T}}},
-    atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}}; cutoff_radius::T) where {T}
+function preprocessing(
+    point::Batch{<:AbstractVector{Point3{T}}},
+    atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}};
+    cutoff_radius::T) where {T}
     lengths = get_batch_lengths(atoms.field)
     # @assert all(lengths .==vcat([0],cumsum(atoms.field .|> size .|> last .|> last |>Map(x -> x * (x + 1) ÷ 2))))
     length_tot = last(lengths)
@@ -146,21 +149,25 @@ function preprocessing(point::Batch{<:AbstractVector{Point3{T}}},
     ConcatenatedBatch(ret, lengths)
 end
 
-function preprocessing(point::Batch{<:AbstractVector{Point3{T}}},
-    atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}},max_nb_atoms::Int; cutoff_radius::T) where {T}
-    slice_length = max_nb_atoms * (max_nb_atoms +1) ÷ 2
+function preprocessing(
+    point::Batch{<:AbstractVector{Point3{T}}},
+    atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}},
+    max_nb_atoms::Int;
+    cutoff_radius::T) where {T}
+    slice_length = max_nb_atoms * (max_nb_atoms + 1) ÷ 2
     length_tot = length(atoms.field) * slice_length
     ret = zeros(T, 6, length_tot)
     # Folds.foreach(eachindex(atoms.field)) do i
     for i in eachindex(atoms.field)
-        first_atoms = @view atoms.field[i][begin:min(length(atoms.field[i]),max_nb_atoms)]
+        f = atoms.field[i]
+        first_atoms = @view f[begin:min(length(f), max_nb_atoms)]
         preprocessing!(
-            view(ret, :,(1+(i-1)*slice_length):(1+i*slice_length) ),
+            view(ret, :, (1+(i-1)*slice_length):(i*slice_length)),
             point.field[i], first_atoms;
             cutoff_radius
         )
     end
-    reshape(ret,6,slice_length,:)
+    reshape(ret, 6, slice_length, :)
 end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
@@ -202,8 +209,8 @@ struct AnnotedKDTree{Type,Property,Subtype}
 end
 
 @inline function select_neighboord(
-    point::Point, grid::RegularGrid{T};
-    cutoff_radius)::StructVector{Sphere{T}} where {T}
+    point::Point, grid::RegularGrid{T}
+)::StructVector{Sphere{T}} where {T}
     _inrange(grid, point)
 end
 

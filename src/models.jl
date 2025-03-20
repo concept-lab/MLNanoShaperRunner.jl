@@ -3,6 +3,9 @@ using Lux
 function select_and_preprocess((point, atoms); cutoff_radius)
     select_and_preprocess(point, atoms; cutoff_radius)
 end
+function select_and_preprocess(max_nb_atoms::Int,(point, atoms); cutoff_radius)
+    select_and_preprocess(max_nb_atoms,point, atoms; cutoff_radius)
+end
 
 const MyType{T<:Number} = StructVector{Sphere{T},@NamedTuple{center::Vector{Point{3,T}}, r::Vector{T}},Int64}
 
@@ -72,8 +75,8 @@ function general_angular_dense(
         WrappedFunction(on_gpu ? gpu_device() : identity),
         main_chain |> (smoothing ? smoothing_layer : identity)
     )
-    main_chain = isnothing(max_nb_atoms) ? DeepSet(main_chain) : FixedSizeDeepSet(main_chain, max_nb_atoms * (max_nb_atoms) ÷ 2)
-    (
+    main_chain = isnothing(max_nb_atoms) ? DeepSet(main_chain) : FixedSizeDeepSet(main_chain, max_nb_atoms * (max_nb_atoms+1) ÷ 2)
+    Chain(
         preprocessing_layer,
         main_chain
         |>
