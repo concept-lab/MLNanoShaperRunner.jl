@@ -6,6 +6,7 @@ include("operations.jl")
 include("batchs.jl")
 include("layers.jl")
 include("models.jl")
+include("interface.jl")
 include("c_interface.jl")
 using .Import
 
