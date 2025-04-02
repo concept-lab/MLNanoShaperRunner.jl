@@ -60,43 +60,46 @@ function distance(vec::AbstractVector{<:AbstractVector}, y::KDTree)::Number
     end
 end
 
-struct RegularGrid{T}
-    grid::Array{Vector{Sphere{T}},3}
+struct RegularGrid{T <: Number,G,F<:Function}
+    grid::Array{Vector{G},3}
     radius::T
     start::Point3{T}
+    center::F
 end
 
 @inline function get_id(point,start,radius)
      floor.(Int, (point .- start) ./ radius) .+ 1
 end
-
-function RegularGrid(points::StructVector{Sphere{T}},radius::T) where T
-    mins = map(1:3) do k minimum(p -> p[k],points.center) end
-    maxes = map(1:3) do k maximum(p -> p[k],points.center) end
+center(x) = x.center
+_empty(::Type{G}) where G <: AbstractVector = G(undef,0)
+_empty(::Type{<:StructVector{T}}) where T = StructVector{T}(undef,0)
+function RegularGrid(points::AbstractVector{G},radius::T,center::Function = center) where {T, G }
+    mins = map(1:3) do k minimum(p -> p[k],center(points)) end
+    maxes = map(1:3) do k maximum(p -> p[k],center(points)) end
     start = Point3(mins...)
     x_m,y_m,z_m = get_id(maxes,start,radius)
-    pos  = map(points.center) do point get_id(point,start,radius) end 
-    grid = [Sphere{T}[] for _ in 1:x_m, _ in 1:y_m, _ in 1:z_m]
+    pos  = map(center(points)) do point get_id(point,start,radius) end 
+    grid = [G[] for _ in 1:x_m, _ in 1:y_m, _ in 1:z_m]
     for i in eachindex(points)
         push!(grid[pos[i]...],points[i])
     end
-    RegularGrid(grid,radius,start)
+    RegularGrid(grid,radius,start,center)
 end
 
-function _inrange(g::RegularGrid{T},p::Point3{T})::StructVector{Sphere{T}} where T
+function _inrange(::Type{G},g::RegularGrid{T},p::Point3{T})::G where {T,G}
     x,y,z = get_id(p,g.start,g.radius)
     r2 = g.radius^2
     dx = [-1,-1,-1, -1,-1,-1, -1,-1,-1,  0, 0, 0,  0,0,0,  0,0,0,  1, 1, 1,  1,1,1,  1,1,1]
     dy = [-1,-1,-1,  0, 0, 0,  1, 1, 1, -1,-1,-1,  0,0,0,  1,1,1, -1,-1,-1,  0,0,0,  1,1,1]
     dz = [-1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1,0,1, -1,0,1, -1, 0, 1, -1,0,1, -1,0,1]
-    res = StructVector{Sphere{T}}((;center=Point3{T}[],r=T[]))
+    res = _empty(G)
     for i in 1:27
         x1 = x + dx[i]
         y1 = y + dy[i]
         z1 = z + dz[i]
         if x1 in axes(g.grid,1) && y1 in axes(g.grid,2) && z1 in axes(g.grid,3)
             for s in g.grid[x1,y1,z1]
-                if sum((p .- s.center) .^2) < r2
+                if sum((p .- g.center(s)) .^2) < r2
                     push!(res,s)
                 end
             end

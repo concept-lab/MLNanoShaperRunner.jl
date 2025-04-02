@@ -1,6 +1,9 @@
 using Test, ChainRulesTestUtils, Zygote
 import FiniteDifferences
 using MLNanoShaperRunner, CUDA
+using MLNanoShaperRunner.Import: PQR
+using StructArrays,Serialization,GeometryBasics
+using Lux
 
 a = [1 2
      3 4]
@@ -45,5 +48,97 @@ end
     @test begin
         jacobian(batched_sum, a, [0, 2])[1] ≈ FiniteDifferences.jacobian(
             FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a, [0, 2]), Float32.(a))[1]
+    end
+end
+function provide_start_model(model::Lux.StatefulLuxLayer,i::Integer)::StatefulLuxLayer
+    Lux.StatefulLuxLayer{true}(provide_start_model(model.model,i),model.ps,model.st)
+end
+function provide_start_model(model::Lux.Chain,i::Integer)::Chain
+    Lux.Chain([model[k] for k in 1:i]...,[NoOpLayer() for _ in (i+1):length(model)]...)
+end
+function provide_start_secondary_chain(model::Lux.StatefulLuxLayer,i::Integer)::StatefulLuxLayer
+    n = length(model.model)
+    Lux.StatefulLuxLayer{true}(Lux.Chain([model.model[k] for k in 1:(n-1)]...,provide_start_model(model.model[n],i)),model.ps,model.st)
+end
+@testset "evaluation" begin
+    model_file = "$(@__DIR__)/../examples/tiny_angular_dense_s_jobs_11_6_3_c_2025-03-10_epoch_800_10631177997949843226"
+    protein_file = "$(@__DIR__)/../examples/example_1.pqr"
+    protein = RegularGrid(getfield.(read(protein_file, PQR{Float32}), :pos) |> StructVector,3f0)
+    model = production_instantiate(deserialize(model_file))
+    preprocessing_layer = Lux.StatefulLuxLayer{true}(MLNanoShaperRunner.get_preprocessing(model.model),model.ps,model.st)
+
+    @test begin
+         a1::Float32 = model((Point3f(0,22,10),protein)) |> only
+         a2::Float32,_  = model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein)) |> vec
+         a1 ≈ a2
+    end
+    @test begin
+         b1::Float32 = model((Point3f(0,22,11),protein)) |> only
+         _,b2::Float32 = model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein)) |> vec
+         b1 ≈ b2
+    end
+
+    @test begin
+         a1 = MLNanoShaperRunner.get_element(preprocessing_layer((Point3f(0,22,10),protein)),1)
+         a2 = MLNanoShaperRunner.get_element(preprocessing_layer((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein)),1) 
+         a1 ≈ a2
+    end
+    @test begin
+         b1= MLNanoShaperRunner.get_element(preprocessing_layer((Point3f(0,22,11),protein)),1)
+         b2=MLNanoShaperRunner.get_element(preprocessing_layer((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein)),2) 
+         b1 ≈ b2
+    end
+    @test begin
+         a1 = preprocessing_layer((Point3f(0,22,10),protein)).lengths
+         a2 = preprocessing_layer((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein)).lengths 
+         a1[2] == a2[2]
+    end
+    @test begin
+         b1= preprocessing_layer((Point3f(0,22,11),protein)).lengths
+         b2=preprocessing_layer((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein)).lengths 
+         b1[2] == b2[3] - b2[2]
+    end
+
+    @test let start_model = provide_start_model(model,2)
+         a1= start_model((Point3f(0,22,10),protein))[:,1]
+         a2  = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,1] 
+         a1 ≈ a2
+    end
+    @test let start_model = provide_start_model(model,2)
+         b1 = start_model((Point3f(0,22,11),protein))[:,1]
+         b2 = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,2] 
+         b1 ≈ b2
+    end
+    @test let start_model = provide_start_model(model,3)
+         a1= start_model((Point3f(0,22,10),protein))[:,1]
+         a2  = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,1] 
+         a1 ≈ a2
+    end
+    @test let start_model = provide_start_model(model,3)
+         b1 = start_model((Point3f(0,22,11),protein))[:,1]
+         b2 = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,2] 
+         b1 ≈ b2
+    end
+
+    @test let start_model = provide_start_secondary_chain(model,1)
+         a1= start_model((Point3f(0,22,10),protein))[:,1]
+         a2  = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,1] 
+         a1 ≈ a2
+    end
+    @test let start_model = provide_start_secondary_chain(model,1)
+         b1 = start_model((Point3f(0,22,11),protein))[:,1]
+         b2 = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,2] 
+         b1 ≈ b2
+    end
+
+    @test let start_model = provide_start_secondary_chain(model,2)
+         a1= start_model((Point3f(0,22,10),protein))[:,1]
+         a2  = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,1] 
+         a1 ≈ a2
+    end
+    @test let start_model = provide_start_secondary_chain(model,2)
+         b1 = start_model((Point3f(0,22,11),protein))[:,1]
+         b2 = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,2] 
+         b1 ≈ b2
     end
 end

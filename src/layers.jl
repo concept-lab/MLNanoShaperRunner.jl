@@ -29,21 +29,9 @@ struct ModelInput{T<:Number}
     atoms::StructVector{Sphere{T}} #Set
 end
 
-struct PreprocessedData{T<:Number}
-    dot::T
-    r_1::T
-    r_2::T
-    d_1::T
-    d_2::T
-end
-PreprocessedData(x::Vector) = PreprocessedData(map(1:5) do f
-    getindex.(x, f)
-end...)
-
 #enable running on gpu
 Adapt.@adapt_structure Batch
 Adapt.@adapt_structure ModelInput
-Adapt.@adapt_structure PreprocessedData
 # Adapt.@adapt_structure Partial
 @concrete terse struct DeepSet <: Lux.AbstractLuxWrapperLayer{:prepross}
     prepross
@@ -55,7 +43,9 @@ function (f::DeepSet)(
     st::NamedTuple
 )
     res, st = Lux.apply(f.prepross, field, ps, st)
-    batched_sum(res, lengths), st
+    ret =  batched_sum(res, lengths)
+    # @info res ret lengths
+    ret,st
 end
 function (f::DeepSet)(arg::Batch, ps, st)
     f(ConcatenatedBatch(arg), ps, st)
@@ -81,6 +71,9 @@ function (f::FixedSizeDeepSet)(
     reshape(sum(res; dims=ndims(res) - 1), size(res)[begin:end-2]..., :), st
 end
 
+function nb_features(nb_atoms::T)::T where T<: Integer
+     (nb_atoms* (nb_atoms+ 1)) ÷ 2
+end
 function preprocessing!(ret, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
     (; r, center) = atoms
     _center = MallocArray{Point3{T}}(undef, length(atoms))
@@ -125,7 +118,7 @@ function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
     lengths = zeros(Int, length(field) + 1)
     for i in eachindex(field)
         l = length(field[i])
-        s = l * (l + 1) ÷ 2
+        s = nb_features(l)
         lengths[i+1] = lengths[i] + s
     end
     lengths
@@ -154,7 +147,7 @@ function preprocessing(
     atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}},
     max_nb_atoms::Int;
     cutoff_radius::T) where {T}
-    slice_length = max_nb_atoms * (max_nb_atoms + 1) ÷ 2
+    slice_length =nb_features(max_nb_atoms) 
     length_tot = length(atoms.field) * slice_length
     ret = zeros(T, 6, length_tot)
     # Folds.foreach(eachindex(atoms.field)) do i
@@ -211,7 +204,7 @@ end
 @inline function select_neighboord(
     point::Point, grid::RegularGrid{T}
 )::StructVector{Sphere{T}} where {T}
-    _inrange(grid, point)
+    _inrange(StructVector{Sphere{T}}, grid, point)
 end
 
 struct PreprocessingLayer <: Lux.AbstractLuxLayer

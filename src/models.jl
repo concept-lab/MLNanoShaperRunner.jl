@@ -3,8 +3,8 @@ using Lux
 function select_and_preprocess((point, atoms); cutoff_radius)
     select_and_preprocess(point, atoms; cutoff_radius)
 end
-function select_and_preprocess(max_nb_atoms::Int,(point, atoms); cutoff_radius)
-    select_and_preprocess(max_nb_atoms,point, atoms; cutoff_radius)
+function select_and_preprocess(max_nb_atoms::Int, (point, atoms); cutoff_radius)
+    select_and_preprocess(max_nb_atoms, point, atoms; cutoff_radius)
 end
 
 const MyType{T<:Number} = StructVector{Sphere{T},@NamedTuple{center::Vector{Point{3,T}}, r::Vector{T}},Int64}
@@ -75,14 +75,12 @@ function general_angular_dense(
         WrappedFunction(on_gpu ? gpu_device() : identity),
         main_chain |> (smoothing ? smoothing_layer : identity)
     )
-    main_chain = isnothing(max_nb_atoms) ? DeepSet(main_chain) : FixedSizeDeepSet(main_chain, max_nb_atoms * (max_nb_atoms+1) ÷ 2)
+    main_chain = isnothing(max_nb_atoms) ? DeepSet(main_chain) : FixedSizeDeepSet(main_chain, max_nb_atoms * (max_nb_atoms + 1) ÷ 2)
     Chain(
         preprocessing_layer,
-        main_chain
-        |>
-        (van_der_waals_channel ? add_van_der_waals_channel : identity),
+        main_chain |> (van_der_waals_channel ? add_van_der_waals_channel : identity),
         secondary_chain;
-        name
+        name,
     )
 end
 
@@ -103,9 +101,9 @@ function tiny_angular_dense(;
         ),
         Chain(
             relu6,
-            LayerNorm((4 + van_der_waals_channel,)),
+            LayerNorm((4 + van_der_waals_channel,);dims =(1,)),
             Dense(4 + van_der_waals_channel => 6, relu),
-            LayerNorm((6,)),
+            LayerNorm((6,); dims = (1,)),
             Dense(6 => 1, sigmoid_fast),
         ),
         ;
@@ -134,9 +132,9 @@ function light_angular_dense(;
             # BatchNorm(50 + van_der_waals_channel),
             # Base.Broadcast.BroadcastFunction(sqrt),
             relu6,
-            LayerNorm((50 + van_der_waals_channel,)),
+            LayerNorm((50 + van_der_waals_channel,);dims = (1,),
             Dense(50 + van_der_waals_channel => 10, relu),
-            LayerNorm((10,)),
+            LayerNorm((10,);dims = (1,)),
             Dense(10 => 1, sigmoid_fast)
         ),
         ;
@@ -165,9 +163,9 @@ function medium_angular_dense(;
             # BatchNorm(100 + van_der_waals_channel),
             # Base.Broadcast.BroadcastFunction(sqrt),
             relu6,
-            LayerNorm((100 + van_der_waals_channel,)),
+            LayerNorm((100 + van_der_waals_channel,);dims = (1,)),
             Dense(100 + van_der_waals_channel => 15, relu),
-            LayerNorm((15,)),
+            LayerNorm((15,);dims = (1,)),
             Dense(15 => 1, sigmoid_fast)
         );
         name="medium_angular_dense" *
@@ -178,7 +176,8 @@ function medium_angular_dense(;
         kargs...
     )
 end
-function drop_preprocessing(x::Chain)
+
+function drop_preprocessing(x::Chain)::Lux.Chain
     if typeof(x[1]) <: PreprocessingLayer
         Chain(NoOpLayer(), map(i -> x[i], 2:length(x))...)
     else
@@ -186,12 +185,26 @@ function drop_preprocessing(x::Chain)
     end
 end
 
-get_preprocessing(x::Chain) =
+function get_preprocessing(x::Chain)::Lux.AbstractLuxLayer
     if typeof(x[1]) <: PreprocessingLayer
         x[1]
     else
         NoOpLayer()
     end
+end
+
+
+function get_last_chain(x::Chain)::Lux.Chain
+    if typeof(x[2]) <: DeepSet
+        Chain(NoOpLayer(),NoOpLayer(), map(i -> x[i], 3:length(x))...)
+    else
+        x
+    end
+end
+
+function get_last_chain_dim(chain::Lux.Chain)
+    chain[2].prepross[2][end].out_dims
+end
 
 struct SerializedModel
     model::Partial
