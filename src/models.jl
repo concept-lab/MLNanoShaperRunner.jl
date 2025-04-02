@@ -132,7 +132,7 @@ function light_angular_dense(;
             # BatchNorm(50 + van_der_waals_channel),
             # Base.Broadcast.BroadcastFunction(sqrt),
             relu6,
-            LayerNorm((50 + van_der_waals_channel,);dims = (1,),
+            LayerNorm((50 + van_der_waals_channel,);dims = (1,)),
             Dense(50 + van_der_waals_channel => 10, relu),
             LayerNorm((10,);dims = (1,)),
             Dense(10 => 1, sigmoid_fast)
@@ -203,7 +203,8 @@ function get_last_chain(x::Chain)::Lux.Chain
 end
 
 function get_last_chain_dim(chain::Lux.Chain)
-    chain[2].prepross[2][end].out_dims
+    c = chain[2].prepross[2].layers[1]
+    c[length(c)].out_dims
 end
 
 struct SerializedModel
