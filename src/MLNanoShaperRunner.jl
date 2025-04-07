@@ -1,9 +1,12 @@
 module MLNanoShaperRunner
 
+using Base.Threads
+using StaticArrays
+
 include("Import.jl")
+include("batchs.jl")
 include("distance_tree.jl")
 include("operations.jl")
-include("batchs.jl")
 include("layers.jl")
 include("models.jl")
 include("interface.jl")

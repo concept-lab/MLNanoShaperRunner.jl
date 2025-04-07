@@ -213,8 +213,9 @@ struct SerializedModel
     states::NamedTuple
 end
 
-function production_instantiate((; model, parameters, states)::SerializedModel)
-    Lux.StatefulLuxLayer{true}(model(), parameters, states |> Lux.testmode)
+function production_instantiate((; model, parameters, states)::SerializedModel;on_gpu::Bool=false)
+    device = on_gpu ? gpu_device() : identity
+    Lux.StatefulLuxLayer{true}(model(;on_gpu), parameters |> device, states  |> device |> Lux.testmode)
 end
 
 function get_cutoff_radius(x::Lux.AbstractLuxLayer)
