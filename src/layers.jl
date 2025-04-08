@@ -74,38 +74,54 @@ end
 function nb_features(nb_atoms::T)::T where T<: Integer
      (nb_atoms* (nb_atoms+ 1)) ÷ 2
 end
-function preprocessing!(ret, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
+
+@inline @inbounds function _preprocessing!(
+    dot::AbstractVector{T},
+    r_s::AbstractVector{T},
+    r_d::AbstractVector{T},
+    d_s::AbstractVector{T},
+    d_d::AbstractVector{T},
+    coeff::AbstractVector{T},
+    r::AbstractVector{T},
+    _center::AbstractVector{Point3{T}},
+    distances::AbstractVector{T},
+    p1::Integer,
+    p2::Integer,
+    i::Integer,
+    cutoff_radius::T) where {T}
+    d_1 = distances[p1]
+    d_2 = distances[p2]
+    r_1 = r[p1]
+    r_2 = r[p2]
+    r_s[i] = r_1 + r_2
+    r_d[i] = abs(r_1 - r_2)
+    d_s[i] = d_1 + d_2
+    d_d[i] = abs(d_1 - d_2)
+    dot[i] = 0
+    for j in 1:3
+        dot[i] += _center[p1][j] * _center[p2][j]
+    end
+    dot[i] += 1.0f-8
+    dot[i] /= d_1 * d_2 + 1.0f-8
+    coeff[i] = cut(cutoff_radius, d_1) * cut(cutoff_radius, d_2)
+end
+function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
     (; r, center) = atoms
     _center = MallocArray{Point3{T}}(undef, length(atoms))
     distances = MallocArray{T}(undef, length(atoms))
-    dot = @view ret[1, :]
-    r_s = @view ret[2, :]
-    r_d = @view ret[3, :]
-    d_s = @view ret[4, :]
-    d_d = @view ret[5, :]
-    coeff = @view ret[6, :]
-
     try
+        dot = @view ret[1, :]
+        r_s = @view ret[2, :]
+        r_d = @view ret[3, :]
+        d_s = @view ret[4, :]
+        d_d = @view ret[5, :]
+        coeff = @view ret[6, :]
         _center .= center .- point
         distances .= euclidean.(Ref(zero(point)), _center)
         i = 1
-        @inbounds for p1 in 1:length(atoms)
+        for p1 in 1:length(atoms)
             for p2 in 1:p1
-                d_1 = distances[p1]
-                d_2 = distances[p2]
-                r_1 = r[p1]
-                r_2 = r[p2]
-                r_s[i] = r_1 + r_2
-                r_d[i] = abs(r_1 - r_2)
-                d_s[i] = d_1 + d_2
-                d_d[i] = abs(d_1 - d_2)
-                dot[i] = 0
-                for j in 1:3
-                    dot[i] += _center[p1][j] * _center[p2][j]
-                end
-                dot[i] += 1.0f-8
-                dot[i] /= d_1 * d_2 + 1.0f-8
-                coeff[i] = cut(cutoff_radius, d_1) * cut(cutoff_radius, d_2)
+                _preprocessing!(dot,r_s,r_d,d_s,d_d,coeff,r,_center,distances,p1,p2,i,cutoff_radius)
                 i += 1
             end
         end
