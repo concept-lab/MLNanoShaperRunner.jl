@@ -141,4 +141,13 @@ end
          b2 = start_model((MLNanoShaperRunner.Batch([Point3f(0,22,10),Point3f(0,22,11)]),protein))[:,2] 
          b1 ≈ b2
     end
+
+end
+@testset "preprocessing" begin
+    atoms1 = StructVector([Sphere(Point3f(0,0,0),1f0),Sphere(Point3f(0,0,0),1f0)])
+    atoms2 = StructVector([Sphere(Point3f(0,0,0),1f0),Sphere(Point3f(2,0,0),1f0)])
+    points = [Point3f(0,1,0),Point3f(0,0,1)]
+    cutoff_radius=3f0
+    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms1]);cutoff_radius) == MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms1]);cutoff_radius)
+    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms2]);cutoff_radius) == MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms2]);cutoff_radius)
 end

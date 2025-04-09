@@ -45,11 +45,11 @@ end
 ) = select_and_preprocess(Batch([point]), atoms; cutoff_radius)
 
 
-function smoothing_layer(layer)
+function smoothing_layer(layer, smoothing::Bool)
     Parallel(
         .*,
         layer,
-        Lux.WrappedFunction(scale_factor)
+        Lux.WrappedFunction(smoothing ? scale_factor : _ -> 1)
     )
 end
 
@@ -73,7 +73,7 @@ function general_angular_dense(
     preprocessing_layer = PreprocessingLayer(isnothing(max_nb_atoms) ? Partial(select_and_preprocess; cutoff_radius) : Partial(select_and_preprocess, max_nb_atoms; cutoff_radius))
     main_chain = Chain(
         WrappedFunction(on_gpu ? gpu_device() : identity),
-        main_chain |> (smoothing ? smoothing_layer : identity)
+        smoothing_layer(main_chain, smoothing)
     )
     main_chain = isnothing(max_nb_atoms) ? DeepSet(main_chain) : FixedSizeDeepSet(main_chain, max_nb_atoms * (max_nb_atoms + 1) ÷ 2)
     Chain(
@@ -101,9 +101,9 @@ function tiny_angular_dense(;
         ),
         Chain(
             relu6,
-            LayerNorm((4 + van_der_waals_channel,);dims =(1,)),
+            LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(4 + van_der_waals_channel => 6, relu),
-            LayerNorm((6,); dims = (1,)),
+            LayerNorm((6,); dims=(1,)),
             Dense(6 => 1, sigmoid_fast),
         ),
         ;
@@ -132,9 +132,9 @@ function light_angular_dense(;
             # BatchNorm(50 + van_der_waals_channel),
             # Base.Broadcast.BroadcastFunction(sqrt),
             relu6,
-            LayerNorm((50 + van_der_waals_channel,);dims = (1,)),
+            LayerNorm((50 + van_der_waals_channel,); dims=(1,)),
             Dense(50 + van_der_waals_channel => 10, relu),
-            LayerNorm((10,);dims = (1,)),
+            LayerNorm((10,); dims=(1,)),
             Dense(10 => 1, sigmoid_fast)
         ),
         ;
@@ -163,9 +163,9 @@ function medium_angular_dense(;
             # BatchNorm(100 + van_der_waals_channel),
             # Base.Broadcast.BroadcastFunction(sqrt),
             relu6,
-            LayerNorm((100 + van_der_waals_channel,);dims = (1,)),
+            LayerNorm((100 + van_der_waals_channel,); dims=(1,)),
             Dense(100 + van_der_waals_channel => 15, relu),
-            LayerNorm((15,);dims = (1,)),
+            LayerNorm((15,); dims=(1,)),
             Dense(15 => 1, sigmoid_fast)
         );
         name="medium_angular_dense" *
@@ -196,7 +196,7 @@ end
 
 function get_last_chain(x::Chain)::Lux.Chain
     if typeof(x[2]) <: DeepSet
-        Chain(NoOpLayer(),NoOpLayer(), map(i -> x[i], 3:length(x))...)
+        Chain(NoOpLayer(), NoOpLayer(), map(i -> x[i], 3:length(x))...)
     else
         x
     end
@@ -204,6 +204,7 @@ end
 
 function get_last_chain_dim(chain::Lux.Chain)
     c = chain[2].prepross[2].layers[1]
+    # @info c
     c[length(c)].out_dims
 end
 
@@ -213,9 +214,9 @@ struct SerializedModel
     states::NamedTuple
 end
 
-function production_instantiate((; model, parameters, states)::SerializedModel;on_gpu::Bool=false)
+function production_instantiate((; model, parameters, states)::SerializedModel; on_gpu::Bool=false)
     device = on_gpu ? gpu_device() : identity
-    Lux.StatefulLuxLayer{true}(model(;on_gpu), parameters |> device, states  |> device |> Lux.testmode)
+    Lux.StatefulLuxLayer{true}(model(; on_gpu), parameters |> device, states |> device |> Lux.testmode)
 end
 
 function get_cutoff_radius(x::Lux.AbstractLuxLayer)
