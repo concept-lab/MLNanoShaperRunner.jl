@@ -75,7 +75,7 @@ function nb_features(nb_atoms::T)::T where T<: Integer
      (nb_atoms* (nb_atoms+ 1)) ÷ 2
 end
 
-@inline @inbounds function _preprocessing!(
+@inline function _preprocessing!(
     dot::AbstractVector{T},
     r_s::AbstractVector{T},
     r_d::AbstractVector{T},

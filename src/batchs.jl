@@ -12,16 +12,16 @@ struct ConcatenatedBatch{T <: AbstractArray}
     field::T
     lengths::Vector{Int}
     function ConcatenatedBatch(field::T, lengths::Vector{Int}) where {T <: AbstractArray}
-        @assert first(lengths)==0 "got $lengths"
-        @assert issorted(lengths) "got $lengths"
-        @assert last(lengths)==size(field)[end] "got $lengths, size is $( size(field))"
+        @assert first(lengths)==0 "got $lengths first value is not zero"
+        @assert issorted(lengths) "got $lengths values are not sorted"
+        @assert last(lengths)==size(field)[end] "got $lengths, size is $( size(field)) last value of length is not equal to last dim of field"
         new{T}(field, lengths)
     end
 end
 Base.length(x::ConcatenatedBatch) = length(x.lengths)
 function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(
-        cat(field; dims = ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
+        cat(field...; dims = ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
 end
 function stack_ConcatenatedBatch(x::AbstractVector{ConcatenatedBatch{T}})::ConcatenatedBatch{T} where {T}
     field = mapreduce((a, b) -> cat(a, b; dims = ndims(a)), x) do a

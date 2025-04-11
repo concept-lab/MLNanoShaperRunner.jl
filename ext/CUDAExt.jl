@@ -35,12 +35,13 @@ end
 
     i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
     n = blockIdx().y
-    i = i + length[n]
-    if i > lengths[n+1]
+    i = i + lengths[n]
+    if i >= lengths[n+1]
         return
     end
-    center[i] .-= points[lengths[n]]
-    distances[i] = sqrt(sum(center[i] .^ 2))
+    center[i] = center[i] .- points[n]
+    distances[i] = sqrt( sum(center[i] .^ 2))
+    return
 end
 
 function centers_distances!(
@@ -56,31 +57,39 @@ function centers_distances!(
 end
 
 function _kernel_preprocessing!(
-    dot::CuDeviceVector{T},
-    r_s::CuDeviceVector{T},
-    r_d::CuDeviceVector{T},
-    d_s::CuDeviceVector{T},
-    d_d::CuDeviceVector{T},
-    coeff::CuDeviceVector{T},
-    r::CuDeviceVector{T},
-    lengths::CuDeviceVector{Int32},
-    center::CuDeviceVector{Point3{T}},
-    distances::CuDeviceVector{T},
+    dot::AbstractVector{T},
+    r_s::AbstractVector{T},
+    r_d::AbstractVector{T},
+    d_s::AbstractVector{T},
+    d_d::AbstractVector{T},
+    coeff::AbstractVector{T},
+    r::AbstractVector{T},
+    lengths::AbstractVector{Int32},
+    center::AbstractVector{Point3{T}},
+    distances::AbstractVector{T},
     cutoff_radius::T) where {T}
     p1 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
     p2 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
-
-    if p1 > p2
+    batch_dim = threadIdx().z + (blockIdx().z - 1) * blockDim().z
+    if  batch_dim >= length(lengths) | p1 > p2
         return
     end
-    i = p1 + p2 * (p2 - 1) ÷ 2
-    batch_dim = blockIdx().x
-    MLNanoShaperRunner._preprocessing!(dot, r_s, r_d, d_s, d_d, r, coeff, center, distances, p1, p2, i + lengths[batch_dim], cutoff_radius)
+    i = p1 + p2 * (p2 + 1) ÷ 2 + lengths[batch_dim] - 1 
+    batch_dim1 = batch_dim+1
+    set_size = lengths[batch_dim1]
+    if i > set_size
+        return
+    end
+    @cushow i
+    # @assert i + length[batch_dim] <= length(dot)
+    MLNanoShaperRunner._preprocessing!(dot, r_s, r_d, d_s, d_d, r, coeff, center, distances, p1, p2, i, cutoff_radius)
+    return
 end
 
 function preprocessing!(ret::CuMatrix{T}, points::CuVector{Point3{T}}, r::CuVector{T}, center::CuVector{Point3{T}}, lengths::Vector{Int32}; cutoff_radius::T) where {T}
-    distances = similar(points, T)
+    distances = similar(center, T)
     centers_distances!(center, distances, points, lengths)
+    @info "post" center distances
     max_set_size = maximum(1:(length(lengths)-1)) do i
         lengths[i+1] - lengths[i]
     end
@@ -90,17 +99,21 @@ function preprocessing!(ret::CuMatrix{T}, points::CuVector{Point3{T}}, r::CuVect
     d_s = @view ret[4, :]
     d_d = @view ret[5, :]
     coeff = @view ret[6, :]
-    @cuda threads = (16, 16, 1) blocks = cld.((max_set_size, max_set_size, 1), 16) _kernel_preprocessing!(dot, r_s, r_d, d_s, d_d, coeff, r, lengths, center, distances, cutoff_radius)
+    @info "launching kernel" ret  lengths max_set_size
+    @cuda threads = (16, 16, 1) blocks = cld.((max_set_size, max_set_size, 1), 16) _kernel_preprocessing!(dot, r_s, r_d, d_s, d_d, coeff, r, cu(lengths), center, distances, cutoff_radius)
+    @info "after kernel" size(ret)
+    @info "after kernel" ret
 end
 function MLNanoShaperRunner.preprocessing(
-    points::ConcatenatedBatch{<:CuVector{Point3{T}}},
+    points::Batch{<:CuVector{Point3{T}}},
     atoms::ConcatenatedBatch{<:StructVector{Sphere{T}}};
     cutoff_radius::T) where {T}
     lengths = atoms.lengths
-    atoms = atoms.field
+    atoms = cu(atoms.field)
     length_tot = last(lengths)
-    ret = similar(points.field, T, 5, length_tot)
-    preprocessing!(ret, points, atoms.r, atoms.center, lengths .|> Int32; cutoff_radius)
+    ret = similar(points.field, T, 6, length_tot)
+    preprocessing!(ret, points.field, atoms.r, atoms.center, lengths .|> Int32; cutoff_radius)
+    @info "end" Array(ret)
     ConcatenatedBatch(ret, lengths)
 end
 @inline function MLNanoShaperRunner.preprocessing(
