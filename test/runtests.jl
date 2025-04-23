@@ -49,6 +49,24 @@ end
         jacobian(batched_sum, a, [0, 2])[1] ≈ FiniteDifferences.jacobian(
             FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a, [0, 2]), Float32.(a))[1]
     end
+    @test begin
+        jacobian(batched_sum, cu([1;; 2]), [0, 2])[1] |> Array ≈
+        FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),
+            a -> batched_sum(a, [0, 2]), Float32.([1;; 2]))[1]
+    end
+    @test begin
+        jacobian(batched_sum, cu(a), [0, 2])[1] |> Array ≈ FiniteDifferences.jacobian(
+            FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a, [0, 2]), Float32.(a))[1]
+    end
+    @test begin
+        jacobian(batched_sum, cu([1;; 2]), [0, 1, 2])[1] |> Array ≈
+        FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),
+            a -> batched_sum(a, [0, 1, 2]), Float32.([1;; 2]))[1]
+    end
+    @test begin
+        jacobian(batched_sum, cu(a), [0, 2])[1] |> Array ≈ FiniteDifferences.jacobian(
+            FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a, [0, 2]), Float32.(a))[1]
+    end
 end
 function provide_start_model(model::Lux.StatefulLuxLayer,i::Integer)::StatefulLuxLayer
     Lux.StatefulLuxLayer{true}(provide_start_model(model.model,i),model.ps,model.st)
@@ -144,10 +162,10 @@ end
 
 end
 @testset "preprocessing" begin
-    atoms1 = StructVector([Sphere(Point3f(0,0,0),1f0),Sphere(Point3f(0,0,0),1f0)])
-    atoms2 = StructVector([Sphere(Point3f(0,0,0),1f0),Sphere(Point3f(2,0,0),1f0)])
+    atoms1 = StructVector([Sphere(Point3f(0,0,0),1f0),Sphere(Point3f(0,-1,0),2f0)])
+    atoms2 = StructVector([Sphere(Point3f(0,0,0),.5f0),Sphere(Point3f(.3,0,0),1f0)])
     points = [Point3f(0,1,0),Point3f(0,0,1)]
     cutoff_radius=3f0
-    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms1]);cutoff_radius).field |> cu ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms1]);cutoff_radius).field
-    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms2]);cutoff_radius).field |> cu ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms2]);cutoff_radius).field
+    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms1,atoms1]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms1,atoms1]);cutoff_radius).field |> Array
+    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms2]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms2]);cutoff_radius).field |> Array
 end

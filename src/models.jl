@@ -101,8 +101,10 @@ function tiny_angular_dense(;
         ),
         Chain(
             relu6,
+            # NoOpLayer(),
             LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(4 + van_der_waals_channel => 6, relu),
+            # NoOpLayer(),
             LayerNorm((6,); dims=(1,)),
             Dense(6 => 1, sigmoid_fast),
         ),

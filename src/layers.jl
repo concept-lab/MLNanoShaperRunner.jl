@@ -38,12 +38,12 @@ Adapt.@adapt_structure ModelInput
 end
 
 function (f::DeepSet)(
-    (; field, lengths)::ConcatenatedBatch,
+    (; field,max_set_size, lengths)::ConcatenatedBatch,
     ps::NamedTuple,
     st::NamedTuple
 )
     res, st = Lux.apply(f.prepross, field, ps, st)
-    ret =  batched_sum(res, lengths)
+    ret =  batched_sum(res,max_set_size, lengths)
     # @info res ret lengths
     ret,st
 end
@@ -69,10 +69,6 @@ function (f::FixedSizeDeepSet)(
     res, st = Lux.apply(f.prepross, batched_input, ps, st)
     res = reshape(res, size(res)[begin:end-1]..., f.sentry_size, :)
     reshape(sum(res; dims=ndims(res) - 1), size(res)[begin:end-2]..., :), st
-end
-
-function nb_features(nb_atoms::T)::T where T<: Integer
-     (nb_atoms* (nb_atoms+ 1)) ÷ 2
 end
 
 @inline function _preprocessing!(
@@ -129,6 +125,9 @@ function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructV
         free(distances)
         free(_center)
     end
+end
+function nb_features(nb_atoms::T)::T where T<: Integer
+     (nb_atoms* (nb_atoms+ 1)) ÷ 2
 end
 function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
     lengths = zeros(Int, length(field) + 1)

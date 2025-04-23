@@ -2,6 +2,7 @@ module MLNanoShaperRunner
 
 using Base.Threads
 using StaticArrays
+using Adapt
 
 include("Import.jl")
 include("batchs.jl")

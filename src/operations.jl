@@ -37,28 +37,32 @@ compute the sum of a Concatenated batch with ndim  = 2. The first dim is the fea
 
 Given `b` of size (n,m) and `nb_elements` of size (k,), the output has size (n,k).
 """
-function batched_sum(b::AbstractMatrix, nb_elements::AbstractVector)
+function batched_sum(b::AbstractMatrix,_ ,nb_elements::AbstractVector)
     a = similar(b, (size(b, 1), length(nb_elements) - 1))
     batched_sum!(a, b, nb_elements)
     a
 end
 
-
-function ChainRulesCore.rrule(::typeof(batched_sum), b::AbstractMatrix, nb_elements)
-    res = batched_sum(b, nb_elements)
-    function batched_sum_pullback(delta)::Tuple{NoTangent, Any, NoTangent}
+function batched_sum_pullback(b_sum::AbstractMatrix{T},delta::AbstractMatrix{T},_,nb_elements::AbstractVector{<:Integer})::AbstractMatrix{T} where T
+    delta_b = similar(b_sum)
+    for i in (minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements)) - 1))
+        for k in axes(delta,1), j in  (nb_elements[i] + 1):nb_elements[i + 1]
+            delta_b[k, j] = delta[k, i]
+        end
+    end
+    delta_b
+end
+function ChainRulesCore.rrule(::typeof(batched_sum), b::AbstractMatrix,max_set_index, nb_elements)
+    res = batched_sum(b,max_set_index, nb_elements)
+    function _batched_sum_pullback(delta)
         delta_b = @thunk begin
-            delta_b = similar(b)
-            # Folds.foreach(minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements)) - 1)) do i
-            foreach(minimum(eachindex(nb_elements)):(maximum(eachindex(nb_elements)) - 1)) do i
-                delta_b[:, (nb_elements[i] + 1):nb_elements[i + 1]] .= delta[:, i]
-            end
-            delta_b
+            delta = unthunk(delta)
+            batched_sum_pullback(b,delta,max_set_index,nb_elements)
         end
 
-        NoTangent(), delta_b, NoTangent()
+        NoTangent(), delta_b, NoTangent(),NoTangent()
     end
-    res, batched_sum_pullback
+    res, _batched_sum_pullback
 end
 
 function alloc_concatenated(sub_array, l)

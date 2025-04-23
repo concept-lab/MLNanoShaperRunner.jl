@@ -2,27 +2,44 @@ using Transducers
 struct Batch{T <: AbstractVector}
     field::T
 end
+function get_max_size(lengths::Vector{<:Integer})::Integer
+    maximum(1:(length(lengths)-1)) do i
+        lengths[i+1] - lengths[i]
+    end
+end
 """
 	ConcatenatedBatch
 
 Represent a vector of arrays of sizes (a..., b_n) where b_n is the variable dimension of the batch.
 You can access view of individual arrays with `get_slice`.
 """
-struct ConcatenatedBatch{T <: AbstractArray}
+struct ConcatenatedBatch{T <: AbstractArray,G <:Integer,H <: AbstractVector{G}}
     field::T
-    lengths::Vector{Int}
-    function ConcatenatedBatch(field::T, lengths::Vector{Int}) where {T <: AbstractArray}
+    max_set_size::G
+    lengths::H
+
+    function ConcatenatedBatch(field::T,max_set_size::G, lengths::H) where {T<:AbstractArray,G<:Integer,H <:AbstractVector{G}}
+        new{T,G,H}(field,max_set_size,lengths)
+    end
+    function ConcatenatedBatch(field::T, lengths::H) where {T<:AbstractArray,H<:AbstractVector{<:Integer}}
+        max_set_size = get_max_size(lengths)
+        new{T,eltype(H),H}(field, max_set_size,lengths)
+    end
+    function ConcatenatedBatch(field::T, lengths::H) where {T<:AbstractArray,H<:Vector{<:Integer}}
         @assert first(lengths)==0 "got $lengths first value is not zero"
         @assert issorted(lengths) "got $lengths values are not sorted"
         @assert last(lengths)==size(field)[end] "got $lengths, size is $( size(field)) last value of length is not equal to last dim of field"
-        new{T}(field, lengths)
+        max_set_size = get_max_size(lengths)
+        new{T,eltype(H),H}(field, max_set_size,lengths)
     end
-end
+    end
 Base.length(x::ConcatenatedBatch) = length(x.lengths)
 function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(
         cat(field...; dims = ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
 end
+Adapt.@adapt_structure ConcatenatedBatch
+
 function stack_ConcatenatedBatch(x::AbstractVector{ConcatenatedBatch{T}})::ConcatenatedBatch{T} where {T}
     field = mapreduce((a, b) -> cat(a, b; dims = ndims(a)), x) do a
         a.field

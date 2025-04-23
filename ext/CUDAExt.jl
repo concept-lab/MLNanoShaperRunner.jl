@@ -21,10 +21,14 @@ function batched_sum!(a::CuMatrix, b::CuMatrix, nb_elements::CuVector{Int})
     @cuda threads = block_size blocks = cld(nb_computations, block_size) _kernel_sum!(
         a, b, nb_elements)
 end
-function MLNanoShaperRunner.batched_sum(b::CuMatrix, nb_elements::AbstractVector)
+function MLNanoShaperRunner.batched_sum(b::CuMatrix,_, nb_elements::CuVector)
     a = similar(b, eltype(b), (size(b, 1), length(nb_elements) - 1))
-    batched_sum!(a, b, cu(nb_elements))
+    batched_sum!(a, b, nb_elements)
     a
+end
+
+function MLNanoShaperRunner.batched_sum(b::CuMatrix,i, nb_elements::AbstractVector)
+    MLNanoShaper.batched_sum(b,i,cu(nb_elements))
 end
 
 @inbounds function _kernel_centers_distances!(
@@ -71,16 +75,16 @@ function _kernel_preprocessing!(
     p1 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
     p2 = threadIdx().y + (blockIdx().y - 1) * blockDim().y
     batch_dim = threadIdx().z + (blockIdx().z - 1) * blockDim().z
-    if  batch_dim >= length(lengths) | p1 > p2
+    if p1 > p2 || batch_dim >= length(lengths)
         return
     end
-    i = p1 + p2 * (p2 + 1) ÷ 2 + lengths[batch_dim] - 1 
-    batch_dim1 = batch_dim+1
+    i = p1 + p2 * (p2 - 1) ÷ 2 + lengths[batch_dim] 
+    batch_dim1 = batch_dim + one(batch_dim)
     set_size = lengths[batch_dim1]
     if i > set_size
         return
     end
-    @cushow i
+    @cushow (i,p1,p2,set_size,length(distances))
     # @assert i + length[batch_dim] <= length(dot)
     MLNanoShaperRunner._preprocessing!(dot, r_s, r_d, d_s, d_d, r, coeff, center, distances, p1, p2, i, cutoff_radius)
     return
@@ -100,15 +104,25 @@ function preprocessing!(ret::CuMatrix{T}, points::CuVector{Point3{T}}, r::CuVect
     d_d = @view ret[5, :]
     coeff = @view ret[6, :]
     @info "launching kernel" ret  lengths max_set_size
-    @cuda threads = (16, 16, 1) blocks = cld.((max_set_size, max_set_size, 1), 16) _kernel_preprocessing!(dot, r_s, r_d, d_s, d_d, coeff, r, cu(lengths), center, distances, cutoff_radius)
+    @cuda threads = (16, 16, 1) blocks = cld.((max_set_size, max_set_size,16*length(points)), 16) _kernel_preprocessing!(dot, r_s, r_d, d_s, d_d, coeff, r, cu(lengths), center, distances, cutoff_radius)
     @info "after kernel" size(ret)
     @info "after kernel" ret
 end
+
+function get_batch_lengths(arglengths::AbstractVector{Int})::Vector{Int}
+    lengths = zeros(Int,length(arglengths))
+    for i in eachindex(lengths)[1+begin:end]
+        lengths[i] = MLNanoShaperRunner.nb_features(arglengths[i] - arglengths[i-1])
+    end
+    lengths
+end
+
 function MLNanoShaperRunner.preprocessing(
     points::Batch{<:CuVector{Point3{T}}},
     atoms::ConcatenatedBatch{<:StructVector{Sphere{T}}};
     cutoff_radius::T) where {T}
-    lengths = atoms.lengths
+    @info "atoms lengths" atoms.lengths
+    lengths = get_batch_lengths(atoms.lengths)
     atoms = cu(atoms.field)
     length_tot = last(lengths)
     ret = similar(points.field, T, 6, length_tot)
@@ -124,5 +138,30 @@ end
     MLNanoShaperRunner.preprocessing(
         points, ConcatenatedBatch(atoms); cutoff_radius
     )
+end
+function _kernel_batched_sum_pullback(delta_b::CuDeviceMatrix{T},delta::CuDeviceMatrix{T},nb_elements::CuDeviceVector{<:Integer}) where T <: Real
+    i = threadIdx().y + (blockIdx().y - 1) * blockDim().y
+    k = threadIdx().z + (blockIdx().z - 1) * blockDim().z
+    if i+1  > length(nb_elements)
+        return
+    end
+    if k > size(delta_b,1)
+        return
+    end
+    j = threadIdx().x + (blockIdx().x - 1) * blockDim().x
+    j += nb_elements[i]
+    if j > nb_elements[i + one(i)]
+        return
+    end
+    delta_b[k, j] = delta[k, i]
+    return
+end
+function MLNanoShaperRunner.batched_sum_pullback(b_sum::CuMatrix{T},delta::CuMatrix{T},max_set_size::Integer,nb_elements::CuVector{<:Integer})::CuMatrix{T} where T
+    delta_b = similar(b_sum)
+    @cuda threads = (16, 16, 1) blocks = cld.((length(nb_elements) - 1 , max_set_size,16* size(b_sum,1)),16) _kernel_batched_sum_pullback(delta_b,delta,nb_elements)
+    delta_b
+end
+function MLNanoShaperRunner.batched_sum_pullback(b_sum::CuMatrix{T},delta::CuMatrix{T},max_set_size::Integer,nb_elements::AbstractVector{<:Integer})::CuMatrix{T} where T
+    MLNanoShaperRunner.batched_sum_pullback(b_sum,delta,max_set_size,cu(nb_elements))
 end
 end

@@ -8,7 +8,6 @@ Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 BioStructures = "de9282ab-8554-53be-b2d6-f6c222edabfc"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
-Cthulhu = "f68482b8-f384-11e8-15f7-abe071a5a75f"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Folds = "41a02a25-b8f0-4f67-bc48-60067656b558"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
@@ -35,5 +34,4 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDAExt = "CUDA"
 
 [compat]
-Cthulhu = "2.16.5"
 StaticArrays = "1.9.13"
