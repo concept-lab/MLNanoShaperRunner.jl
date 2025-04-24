@@ -78,6 +78,14 @@ function provide_start_secondary_chain(model::Lux.StatefulLuxLayer,i::Integer)::
     n = length(model.model)
     Lux.StatefulLuxLayer{true}(Lux.Chain([model.model[k] for k in 1:(n-1)]...,provide_start_model(model.model[n],i)),model.ps,model.st)
 end
+@testset "preprocessing" begin
+    atoms1 = StructVector([Sphere(Point3f(0,0,0),1f0),Sphere(Point3f(0,-1,0),2f0)])
+    atoms2 = StructVector([Sphere(Point3f(0,0,0),.5f0),Sphere(Point3f(.3,0,0),1f0)])
+    points = [Point3f(0,1,0),Point3f(0,0,1)]
+    cutoff_radius=3f0
+    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms1,atoms1]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms1,atoms1]);cutoff_radius).field |> Array
+    @test MLNanoShaperRunner.preprocessing(Batch(points[1:1]),Batch([atoms2]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points[1:1])),Batch([atoms2]);cutoff_radius).field |> Array
+end
 @testset "evaluation" begin
     model_file = "$(@__DIR__)/../examples/tiny_angular_dense_s_jobs_11_6_3_c_2025-03-10_epoch_800_10631177997949843226"
     protein_file = "$(@__DIR__)/../examples/example_1.pqr"
@@ -160,12 +168,4 @@ end
          b1 ≈ b2
     end
 
-end
-@testset "preprocessing" begin
-    atoms1 = StructVector([Sphere(Point3f(0,0,0),1f0),Sphere(Point3f(0,-1,0),2f0)])
-    atoms2 = StructVector([Sphere(Point3f(0,0,0),.5f0),Sphere(Point3f(.3,0,0),1f0)])
-    points = [Point3f(0,1,0),Point3f(0,0,1)]
-    cutoff_radius=3f0
-    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms1,atoms1]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms1,atoms1]);cutoff_radius).field |> Array
-    @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms2]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms2]);cutoff_radius).field |> Array
 end

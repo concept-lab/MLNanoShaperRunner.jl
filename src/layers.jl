@@ -94,9 +94,12 @@ end
     d_s[i] = d_1 + d_2
     d_d[i] = abs(d_1 - d_2)
     dot[i] = 0
+    c1  = _center[p1]
+    c2 = _center[p2]
     for j in 1:3
-        dot[i] += _center[p1][j] * _center[p2][j]
+        dot[i] += c1[j] * c2[j]
     end
+    return
     dot[i] += 1.0f-8
     dot[i] /= d_1 * d_2 + 1.0f-8
     coeff[i] = cut(cutoff_radius, d_1) * cut(cutoff_radius, d_2)

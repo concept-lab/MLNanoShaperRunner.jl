@@ -52,12 +52,10 @@ function centers_distances!(
     center::CuVector{Point3{T}},
     distances::CuVector{T},
     points::CuVector{Point3{T}},
-    lengths::Vector{Int32}
+    max_set_size::Int32,
+    lengths::CuVector{Int32}
 ) where {T}
-    max_set_size = maximum(1:(length(lengths)-1)) do i
-        lengths[i+1] - lengths[i]
-    end
-    @cuda threads = (16, 1) blocks = (cld(max_set_size, 16), length(lengths) - 1) _kernel_centers_distances!(center, distances, points, cu(lengths))
+    @cuda threads = (16, 1) blocks = (cld(max_set_size, 16), length(lengths) - 1) _kernel_centers_distances!(center, distances, points, lengths)
 end
 
 function _kernel_preprocessing!(
@@ -84,15 +82,17 @@ function _kernel_preprocessing!(
     if i > set_size
         return
     end
-    @cushow (i,p1,p2,set_size,length(distances))
+    @cushow (i,p1,p2,set_size)
     # @assert i + length[batch_dim] <= length(dot)
     MLNanoShaperRunner._preprocessing!(dot, r_s, r_d, d_s, d_d, r, coeff, center, distances, p1, p2, i, cutoff_radius)
     return
 end
 
-function preprocessing!(ret::CuMatrix{T}, points::CuVector{Point3{T}}, r::CuVector{T}, center::CuVector{Point3{T}}, lengths::Vector{Int32}; cutoff_radius::T) where {T}
+function preprocessing!(ret::CuMatrix{T}, points::CuVector{Point3{T}},atoms::ConcatenatedBatch{<:StructVector{Sphere{T}}}, lengths::Vector{Int32}; cutoff_radius::T) where {T}
+    center = atoms.field.center
+    r = atoms.field.r
     distances = similar(center, T)
-    centers_distances!(center, distances, points, lengths)
+    centers_distances!(center, distances, points,atoms.max_set_size |> Int32, atoms.lengths .|> Int32)
     @info "post" center distances
     max_set_size = maximum(1:(length(lengths)-1)) do i
         lengths[i+1] - lengths[i]
@@ -111,8 +111,8 @@ end
 
 function get_batch_lengths(arglengths::AbstractVector{Int})::Vector{Int}
     lengths = zeros(Int,length(arglengths))
-    for i in eachindex(lengths)[1+begin:end]
-        lengths[i] = MLNanoShaperRunner.nb_features(arglengths[i] - arglengths[i-1])
+    for i in eachindex(lengths)[begin:(end -1)]
+        lengths[i+1] = lengths[i] +  MLNanoShaperRunner.nb_features(arglengths[i+1] - arglengths[i])
     end
     lengths
 end
@@ -121,14 +121,15 @@ function MLNanoShaperRunner.preprocessing(
     points::Batch{<:CuVector{Point3{T}}},
     atoms::ConcatenatedBatch{<:StructVector{Sphere{T}}};
     cutoff_radius::T) where {T}
+    @assert length(points.field) == (length(atoms.lengths) - 1)
     @info "atoms lengths" atoms.lengths
-    lengths = get_batch_lengths(atoms.lengths)
-    atoms = cu(atoms.field)
-    length_tot = last(lengths)
+    sets_cum_lengths = get_batch_lengths(atoms.lengths)
+    atoms = cu(atoms)
+    length_tot = last(sets_cum_lengths)
     ret = similar(points.field, T, 6, length_tot)
-    preprocessing!(ret, points.field, atoms.r, atoms.center, lengths .|> Int32; cutoff_radius)
+    preprocessing!(ret, points.field, atoms, sets_cum_lengths .|> Int32; cutoff_radius)
     @info "end" Array(ret)
-    ConcatenatedBatch(ret, lengths)
+    ConcatenatedBatch(ret, sets_cum_lengths)
 end
 @inline function MLNanoShaperRunner.preprocessing(
     points::Batch{<:CuVector{Point3{T}}},
