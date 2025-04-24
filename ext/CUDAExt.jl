@@ -28,7 +28,7 @@ function MLNanoShaperRunner.batched_sum(b::CuMatrix,_, nb_elements::CuVector)
 end
 
 function MLNanoShaperRunner.batched_sum(b::CuMatrix,i, nb_elements::AbstractVector)
-    MLNanoShaper.batched_sum(b,i,cu(nb_elements))
+    MLNanoShaperRunner.batched_sum(b,i,cu(nb_elements))
 end
 
 @inbounds function _kernel_centers_distances!(
