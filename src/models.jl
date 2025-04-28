@@ -119,6 +119,36 @@ function tiny_angular_dense(;
 end
 
 """
+    tiny_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
+
+	`tiny_angular_dense` is a function that generate a lux model.
+
+"""
+function tiny_soft_max_angular_dense(;
+    van_der_waals_channel=false,
+    smoothing=true,
+    kargs...)
+    general_angular_dense(
+        Chain(
+            Dense(6 => 7, relu),
+            Dense(7 => 4, x -> exp( 1f1*x)),
+        ),
+        Chain(
+            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x -> log(x)*1f-1)),
+            Dense(4 + van_der_waals_channel => 6, relu),
+            Dense(6 => 1, sigmoid_fast),
+        ),
+        ;
+        name="tiny_angular_dense" *
+             (van_der_waals_channel ? "_v" : "") *
+             (smoothing ? "_s" : ""),
+        van_der_waals_channel,
+        smoothing,
+        kargs...
+    )
+end
+
+"""
     light_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
 
 	`light_angular_dense` is a function that generate a lux model.
