@@ -103,10 +103,10 @@ function preprocessing!(ret::CuMatrix{T}, points::CuVector{Point3{T}},atoms::Con
     d_s = @view ret[4, :]
     d_d = @view ret[5, :]
     coeff = @view ret[6, :]
-    @info "launching kernel" ret  lengths max_set_size
+    # @info "launching kernel" ret  lengths max_set_size
     @cuda threads = (16, 16, 1) blocks = cld.((max_set_size, max_set_size,16*length(points)), 16) _kernel_preprocessing!(dot, r_s, r_d, d_s, d_d, coeff, r, cu(lengths), center, distances, cutoff_radius)
-    @info "after kernel" size(ret)
-    @info "after kernel" ret
+    # @info "after kernel" size(ret)
+    # @info "after kernel" ret
 end
 
 function get_batch_lengths(arglengths::AbstractVector{Int})::Vector{Int}
@@ -127,6 +127,7 @@ function MLNanoShaperRunner.preprocessing(
     atoms = cu(atoms)
     length_tot = last(sets_cum_lengths)
     ret = similar(points.field, T, 6, length_tot)
+    ret .= -1
     preprocessing!(ret, points.field, atoms, sets_cum_lengths .|> Int32; cutoff_radius)
     @info "end" Array(ret)
     ConcatenatedBatch(ret, sets_cum_lengths)

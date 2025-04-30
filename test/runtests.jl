@@ -83,6 +83,7 @@ end
     atoms2 = StructVector([Sphere(Point3f(0,0,0),.5f0),Sphere(Point3f(.3,0,0),1f0)])
     points = [Point3f(0,1,0),Point3f(0,0,1)]
     cutoff_radius=3f0
+    @info "test1"  MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms1,atoms1]);cutoff_radius).field MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms1,atoms1]);cutoff_radius).field |> Array
     @test MLNanoShaperRunner.preprocessing(Batch(points),Batch([atoms1,atoms1]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points)),Batch([atoms1,atoms1]);cutoff_radius).field |> Array
     @test MLNanoShaperRunner.preprocessing(Batch(points[1:1]),Batch([atoms2]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points[1:1])),Batch([atoms2]);cutoff_radius).field |> Array
 end

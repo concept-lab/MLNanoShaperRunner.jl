@@ -71,7 +71,7 @@ function (f::FixedSizeDeepSet)(
     reshape(sum(res; dims=ndims(res) - 1), size(res)[begin:end-2]..., :), st
 end
 
-@inline function _preprocessing!(
+function _preprocessing!(
     dot::AbstractVector{T},
     r_s::AbstractVector{T},
     r_d::AbstractVector{T},
@@ -99,7 +99,6 @@ end
     for j in 1:3
         dot[i] += c1[j] * c2[j]
     end
-    return
     dot[i] += 1.0f-8
     dot[i] /= d_1 * d_2 + 1.0f-8
     coeff[i] = cut(cutoff_radius, d_1) * cut(cutoff_radius, d_2)
@@ -133,6 +132,7 @@ function nb_features(nb_atoms::T)::T where T<: Integer
      (nb_atoms* (nb_atoms+ 1)) ÷ 2
 end
 function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
+    @assert length(field) >= 1
     lengths = zeros(Int, length(field) + 1)
     for i in eachindex(field)
         l = length(field[i])
@@ -149,6 +149,7 @@ function preprocessing(
     # @assert all(lengths .==vcat([0],cumsum(atoms.field .|> size .|> last .|> last |>Map(x -> x * (x + 1) ÷ 2))))
     length_tot = last(lengths)
     ret = Matrix{T}(undef, 6, length_tot)
+    ret .= T(NaN)
     # Folds.foreach(eachindex(atoms.field)) do i
     for i in eachindex(atoms.field)
         preprocessing!(
@@ -157,6 +158,7 @@ function preprocessing(
             cutoff_radius
         )
     end
+    @assert !(any(isnan.(ret)))
     ConcatenatedBatch(ret, lengths)
 end
 
@@ -189,7 +191,7 @@ end
 scale_factor(x) = @view x[end:end, :]
 
 function trace(message::String, x)
-    @info message Ref(abs.(x)) .|> [minimum, mean, std, maximum]
+    @info message Ref(abs.(x)) .|> [minimum, mean, std, maximum,size]
     x
 end
 
@@ -197,7 +199,7 @@ trace(message::String) = x -> trace(message, x)
 function ChainRulesCore.rrule(::typeof(trace), message, x)
     y = trace(message, x)
     function trace_pullback(y_hat)
-        @info "derivation $message" Ref(abs.(y_hat)) .|> [minimum, mean, std, maximum]
+        @info "derivation $message" Ref(abs.(y_hat)) .|> [minimum, mean, std, maximum,size]
         NoTangent(), NoTangent(), y_hat
     end
     return y, trace_pullback

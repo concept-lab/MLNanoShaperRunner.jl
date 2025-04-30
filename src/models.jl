@@ -25,6 +25,7 @@ function select_and_preprocess(
     atoms::RegularGrid{T};
     cutoff_radius::Number
 ) where {T}
+    @assert length(point.field) >= 1
     neighboord = select_neighboord_batch(point, atoms)
     preprocessing(point, neighboord, max_nb_atoms; cutoff_radius)
 end
@@ -96,15 +97,19 @@ function tiny_angular_dense(;
     kargs...)
     general_angular_dense(
         Chain(
+            # Lux.WrappedFunction(trace("input")),
             Dense(6 => 7, relu),
-            Dense(7 => 4, relu)
+            # Lux.WrappedFunction(trace("pre sum")),
+            Dense(7 => 4, relu),
         ),
         Chain(
+            # Lux.WrappedFunction(trace("post sum")),
             relu6,
             # NoOpLayer(),
             LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(4 + van_der_waals_channel => 6, relu),
             # NoOpLayer(),
+            # Lux.WrappedFunction(trace("pre norm")),
             LayerNorm((6,); dims=(1,)),
             Dense(6 => 1, sigmoid_fast),
         ),
@@ -131,15 +136,17 @@ function tiny_soft_max_angular_dense(;
     general_angular_dense(
         Chain(
             Dense(6 => 7, relu),
-            Dense(7 => 4, x -> exp( 1f1*x)),
+            Dense(7 => 4, x -> exp( 1f1*relu(x)) -1f0),
         ),
         Chain(
-            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x -> log(x)*1f-1)),
+            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x -> 1f0 + log(x)*1f-1)),
+            # LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(4 + van_der_waals_channel => 6, relu),
+            # LayerNorm((6,); dims=(1,)),
             Dense(6 => 1, sigmoid_fast),
         ),
         ;
-        name="tiny_angular_dense" *
+        name="tiny_soft_max_angular_dense" *
              (van_der_waals_channel ? "_v" : "") *
              (smoothing ? "_s" : ""),
         van_der_waals_channel,
@@ -171,6 +178,39 @@ function light_angular_dense(;
         ),
         ;
         name="light_angular_dense" *
+             (van_der_waals_channel ? "_v" : "") *
+             (smoothing ? "_s" : ""),
+        van_der_waals_channel,
+        smoothing,
+        kargs...
+    )
+end
+
+
+"""
+    light_soft_max_angular_dense(; categorical=false, van_der_waals_channel=false, kargs...)
+
+	`light_soft_max_angular_dense` is a function that generate a lux model.
+
+"""
+function light_soft_max_angular_dense(;
+    van_der_waals_channel=false,
+    smoothing=true,
+    kargs...)
+    general_angular_dense(
+        Chain(
+            Dense(6 => 10, relu),
+            Dense(10 => 50, x -> exp( 1f1*relu(x)) -1f0),
+        ),
+        Chain(
+            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x -> 1f0 + log(x)*1f-1)),
+            # LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
+            Dense(50 + van_der_waals_channel => 10, relu),
+            # LayerNorm((6,); dims=(1,)),
+            Dense(10 => 1, sigmoid_fast),
+        ),
+        ;
+        name="light_soft_max_angular_dense" *
              (van_der_waals_channel ? "_v" : "") *
              (smoothing ? "_s" : ""),
         van_der_waals_channel,

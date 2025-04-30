@@ -3,6 +3,7 @@ struct Batch{T <: AbstractVector}
     field::T
 end
 function get_max_size(lengths::Vector{<:Integer})::Integer
+    @assert length(lengths) >= 2
     maximum(1:(length(lengths)-1)) do i
         lengths[i+1] - lengths[i]
     end
@@ -40,7 +41,7 @@ function ConcatenatedBatch((; field)::Batch)
 end
 Adapt.@adapt_structure ConcatenatedBatch
 
-function stack_ConcatenatedBatch(x::AbstractVector{ConcatenatedBatch{T}})::ConcatenatedBatch{T} where {T}
+function stack_ConcatenatedBatch(x::AbstractVector{<:ConcatenatedBatch{T}})::ConcatenatedBatch{T} where {T}
     field = mapreduce((a, b) -> cat(a, b; dims = ndims(a)), x) do a
         a.field
     end
