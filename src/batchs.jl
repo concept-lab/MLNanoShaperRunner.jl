@@ -2,10 +2,14 @@ using Transducers
 struct Batch{T <: AbstractVector}
     field::T
 end
-function get_max_size(lengths::Vector{<:Integer})::Integer
-    @assert length(lengths) >= 2
-    maximum(1:(length(lengths)-1)) do i
-        lengths[i+1] - lengths[i]
+function get_max_size(lengths::Vector{T})::T where T
+    @assert length(lengths) >= 1
+    if length(lengths) == 1
+        zero(T)
+    else
+        maximum(1:(length(lengths)-1)) do i
+            lengths[i+1] - lengths[i]
+        end
     end
 end
 """

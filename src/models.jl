@@ -25,7 +25,7 @@ function select_and_preprocess(
     atoms::RegularGrid{T};
     cutoff_radius::Number
 ) where {T}
-    @assert length(point.field) >= 1
+    # @assert length(point.field) >= 1
     neighboord = select_neighboord_batch(point, atoms)
     preprocessing(point, neighboord, max_nb_atoms; cutoff_radius)
 end
@@ -135,11 +135,14 @@ function tiny_soft_max_angular_dense(;
     kargs...)
     general_angular_dense(
         Chain(
+            # Lux.WrappedFunction(trace("input")),
             Dense(6 => 7, relu),
-            Dense(7 => 4, x -> exp( 1f1*relu(x)) -1f0),
+            # Lux.WrappedFunction(trace("pre sum 1")),
+            Dense(7 => 4, x -> exp( 1f1*relu6(x)) -1f0),
         ),
         Chain(
-            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x -> 1f0 + log(x)*1f-1)),
+            # Lux.WrappedFunction(trace("post sum")),
+            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x ->log(1f0 + x)*1f-1)),
             # LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(4 + van_der_waals_channel => 6, relu),
             # LayerNorm((6,); dims=(1,)),
@@ -200,7 +203,7 @@ function light_soft_max_angular_dense(;
     general_angular_dense(
         Chain(
             Dense(6 => 10, relu),
-            Dense(10 => 50, x -> exp( 1f1*relu(x)) -1f0),
+            Dense(10 => 50, x -> exp( 1f1*relu6(x)) -1f0),
         ),
         Chain(
             Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x -> 1f0 + log(x)*1f-1)),

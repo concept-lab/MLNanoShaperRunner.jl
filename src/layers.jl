@@ -132,7 +132,7 @@ function nb_features(nb_atoms::T)::T where T<: Integer
      (nb_atoms* (nb_atoms+ 1)) ÷ 2
 end
 function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
-    @assert length(field) >= 1
+    # @assert length(field) >= 1
     lengths = zeros(Int, length(field) + 1)
     for i in eachindex(field)
         l = length(field[i])
@@ -180,6 +180,7 @@ function preprocessing(
             cutoff_radius
         )
     end
+    @assert !(any(isnan.(ret)))
     reshape(ret, 6, slice_length, :)
 end
 
