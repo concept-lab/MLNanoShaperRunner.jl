@@ -84,18 +84,19 @@ function _preprocessing!(
     p1::Integer,
     p2::Integer,
     i::Integer,
+    batch_offset::Integer,
     cutoff_radius::T) where {T}
-    d_1 = distances[p1]
-    d_2 = distances[p2]
-    r_1 = r[p1]
-    r_2 = r[p2]
+    d_1 = distances[p1 + batch_offset]
+    d_2 = distances[p2 + batch_offset]
+    r_1 = r[p1 + batch_offset]
+    r_2 = r[p2 + batch_offset]
     r_s[i] = r_1 + r_2
     r_d[i] = abs(r_1 - r_2)
     d_s[i] = d_1 + d_2
     d_d[i] = abs(d_1 - d_2)
     dot[i] = 0
-    c1  = _center[p1]
-    c2 = _center[p2]
+    c1  = _center[p1 + batch_offset]
+    c2 = _center[p2 + batch_offset]
     for j in 1:3
         dot[i] += c1[j] * c2[j]
     end
@@ -119,7 +120,7 @@ function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructV
         i = 1
         for p1 in 1:length(atoms)
             for p2 in 1:p1
-                _preprocessing!(dot,r_s,r_d,d_s,d_d,coeff,r,_center,distances,p1,p2,i,cutoff_radius)
+                _preprocessing!(dot,r_s,r_d,d_s,d_d,coeff,r,_center,distances,p1,p2,i,0,cutoff_radius)
                 i += 1
             end
         end
@@ -149,7 +150,6 @@ function preprocessing(
     # @assert all(lengths .==vcat([0],cumsum(atoms.field .|> size .|> last .|> last |>Map(x -> x * (x + 1) ÷ 2))))
     length_tot = last(lengths)
     ret = Matrix{T}(undef, 6, length_tot)
-    ret .= T(NaN)
     # Folds.foreach(eachindex(atoms.field)) do i
     for i in eachindex(atoms.field)
         preprocessing!(
