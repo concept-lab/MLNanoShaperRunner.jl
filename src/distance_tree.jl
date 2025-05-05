@@ -125,6 +125,8 @@ function my_push!(x::AbstractMatrix{T},i::Ref{Int},j::Int, y::T) where {T}
     x[i[],j] = y
     i[] += 1
 end
+_sub_array_type(::Type{T}) where T <: AbstractMatrix=SubArray{eltype(T),1,T,Tuple{UnitRange{Int64},Int},true}
+_sub_array_type(::Type{T}) where T <: StructArray = StructArray{eltype(T),NamedTuple,1,T,Tuple{UnitRange{Int64},Int},true}
 function _inrange(::Type{G}, g::RegularGrid{T}, p::Batch{<:AbstractVector{Point3{T}}}) where {T,G}
     n = length(p.field)
     res = _summon_type(G)(undef, 128, n)

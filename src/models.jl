@@ -138,14 +138,14 @@ function tiny_soft_max_angular_dense(;
             # Lux.WrappedFunction(trace("input")),
             Dense(6 => 7, relu),
             # Lux.WrappedFunction(trace("pre sum 1")),
-            Dense(7 => 4, x -> exp( 1f1*relu6(x)) -1f0),
+            Dense(7 => 4, x -> exp( 1f0*relu6(x)) -1f0),
         ),
         Chain(
             # Lux.WrappedFunction(trace("post sum")),
-            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x ->log(1f0 + x)*1f-1)),
-            # LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
+            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x ->log(1f0 + x)*1f0)),
+            LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(4 + van_der_waals_channel => 6, relu),
-            # LayerNorm((6,); dims=(1,)),
+            LayerNorm((6,); dims=(1,)),
             Dense(6 => 1, sigmoid_fast),
         ),
         ;

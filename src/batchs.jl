@@ -1,4 +1,5 @@
 using Transducers
+using MLUtils
 struct Batch{T <: AbstractVector}
     field::T
 end
@@ -38,7 +39,9 @@ struct ConcatenatedBatch{T <: AbstractArray,G <:Integer,H <: AbstractVector{G}}
         new{T,eltype(H),H}(field, max_set_size,lengths)
     end
     end
-Base.length(x::ConcatenatedBatch) = length(x.lengths)
+Base.length(x::ConcatenatedBatch) = length(x.lengths) -1
+MLUtils.numobs(x::ConcatenatedBatch) = length(x)
+MLUtils.getobs(data::ConcatenatedBatch,i) = get_element(data,i)
 function ConcatenatedBatch((; field)::Batch)
     ConcatenatedBatch(
         cat(field...; dims = ndims(field)), vcat([0], field .|> size .|> last |> cumsum))

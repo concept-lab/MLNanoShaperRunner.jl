@@ -86,22 +86,25 @@ function _preprocessing!(
     i::Integer,
     batch_offset::Integer,
     cutoff_radius::T) where {T}
-    d_1 = distances[p1 + batch_offset]
-    d_2 = distances[p2 + batch_offset]
-    r_1 = r[p1 + batch_offset]
-    r_2 = r[p2 + batch_offset]
+    _p1 =  p1 + batch_offset
+    _p2 =  p2 + batch_offset
+    d_1 = distances[_p1]
+    d_2 = distances[_p2]
+    r_1 = r[_p1]
+    r_2 = r[_p2]
     r_s[i] = r_1 + r_2
     r_d[i] = abs(r_1 - r_2)
     d_s[i] = d_1 + d_2
     d_d[i] = abs(d_1 - d_2)
-    dot[i] = 0
-    c1  = _center[p1 + batch_offset]
-    c2 = _center[p2 + batch_offset]
+    c1  = _center[_p1]
+    c2 = _center[_p2]
+    d = zero(eltype(dot))
     for j in 1:3
-        dot[i] += c1[j] * c2[j]
+        d += c1[j] * c2[j]
     end
-    dot[i] += 1.0f-8
-    dot[i] /= d_1 * d_2 + 1.0f-8
+    d += 1.0f-8
+    d /= d_1 * d_2 + 1.0f-8
+    dot[i] = d
     coeff[i] = cut(cutoff_radius, d_1) * cut(cutoff_radius, d_2)
 end
 function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
