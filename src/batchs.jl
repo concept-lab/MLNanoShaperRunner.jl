@@ -43,8 +43,12 @@ Base.length(x::ConcatenatedBatch) = length(x.lengths) -1
 MLUtils.numobs(x::ConcatenatedBatch) = length(x)
 MLUtils.getobs(data::ConcatenatedBatch,i) = get_element(data,i)
 function ConcatenatedBatch((; field)::Batch)
-    ConcatenatedBatch(
-        cat(field...; dims = ndims(field)), vcat([0], field .|> size .|> last |> cumsum))
+    dims = vcat([0], field .|> size .|> last |> cumsum)
+    res = similar(first(field),size(first(field))[begin:(end - 1)]...,last(dims))
+    for i in eachindex(dims)[begin:(end-1)]
+        res[fill(:,ndims(res)-1)...,(dims[i] +1):dims[i+1]] .= field[i]
+    end
+    ConcatenatedBatch(res, dims)
 end
 Adapt.@adapt_structure ConcatenatedBatch
 
