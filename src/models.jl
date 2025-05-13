@@ -203,10 +203,10 @@ function light_soft_max_angular_dense(;
     general_angular_dense(
         Chain(
             Dense(6 => 10, relu),
-            Dense(10 => 50, x -> exp( 1f0*relu6(x)) -1f0),
+            Dense(10 => 50, x -> exp( relu6(x)) -1f0),
         ),
         Chain(
-            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x -> 1f0 + log(x)*1f0)),
+            Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x ->log(1f0 + x))),
             # LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(50 + van_der_waals_channel => 10, relu),
             # LayerNorm((6,); dims=(1,)),
