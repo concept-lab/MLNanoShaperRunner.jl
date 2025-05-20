@@ -73,6 +73,16 @@ end
 function get_element((; field, lengths)::ConcatenatedBatch, i::Integer)
     field[fill(:, ndims(field) - 1)..., get_slice(lengths, i)]
 end
+function get_element((;field,lengths)::ConcatenatedBatch,indices::AbstractVector)
+    new_slices_lengths = get_slice.(Ref(lengths),indices) .|> length
+    new_lengths =vcat([0],cumsum(new_slices_lengths))
+    new_field = similar(field)
+    for (i,j) in enumerate(indices)
+        colons = fill(:, ndims(field) - 1)
+        new_field[colons..., get_slice(new_lengths, i)] .= field[colons..., get_slice(lengths, j)] 
+    end
+    ConcatenatedBatch(new_field,new_lengths)
+end
 function get_element((; field, lengths)::ConcatenatedBatch, i::UnitRange)
     idx = lengths[minimum(i):(maximum(i) + 1)]
     idx .-= first(idx)
