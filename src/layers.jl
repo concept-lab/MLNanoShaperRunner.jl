@@ -3,7 +3,6 @@ using Adapt: @adapt_structure
 using ConcreteStructs
 using GeometryBasics
 using Random
-using SimpleChains: static
 using Adapt
 using StructArrays
 using Distances
@@ -207,22 +206,6 @@ function ChainRulesCore.rrule(::typeof(trace), message, x)
         NoTangent(), NoTangent(), y_hat
     end
     return y, trace_pullback
-end
-
-"""
-	AnnotedKDTree(data::StructVector,property::StaticSymbol)
-# Fields
-- data::StructVector
-- tree::KDTree
-"""
-struct AnnotedKDTree{Type,Property,Subtype}
-    data::StructVector{Type}
-    tree::KDTree{Subtype}
-    function AnnotedKDTree(data::StructVector, property::StaticSymbol)
-        new{eltype(data),dynamic(property),
-            eltype(getproperty(StructArrays.components(data), dynamic(property)))}(
-            data, KDTree(getproperty(data, dynamic(property)); reorder=false))
-    end
 end
 
 @inline function select_neighboord(

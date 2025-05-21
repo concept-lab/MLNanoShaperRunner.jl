@@ -1,4 +1,3 @@
-using NearestNeighbors
 using Serialization
 using Lux
 using GeometryBasics
@@ -91,7 +90,7 @@ Base.@ccallable function load_model(path::Cstring)::Cint
 end
 Base.@ccallable function load_atoms(start::Ptr{CSphere}, length::Cint)::Cint
     try
-        global_state.atoms = AnnotedKDTree(
+        global_state.atoms = RegularGrid(
             Iterators.map(1:length) do n
                 (;x,y,z,r) = unsafe_load(start,n)
                 Sphere(Point3f(x, y, z), r)

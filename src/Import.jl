@@ -1,11 +1,10 @@
 module Import
 using StructArrays
-# using GLMakie
+using BioSymbols
 using GeometryBasics
 using TOML
-using BioStructures
 using Folds
-export extract_balls, PQR, Atom
+export PQR, Atom
 
 struct XYZR{T} end
 struct PQR{T} end
@@ -71,19 +70,19 @@ end
 
 params = "$( dirname(dirname(@__FILE__)))/param/param.toml"
 
-function extract_balls(T::Type{<:Number}, prot::MolecularStructure)
-    radii = TOML.parsefile(params)["atoms"]["radius"] |> Dict{String, T}
-    reduce(prot, 4) do atom
-        if typeof(atom) == Atom
-            Sphere{T}[Sphere(Point3(atom.coords) .|> T,
-                if atom.element in keys(radii)
-                    radii[atom.element]
-                else
-                    1.0
-                end)]
-        else
-            Sphere{T}[]
-        end
-    end |> StructVector
-end
+# function extract_balls(T::Type{<:Number}, prot::MolecularStructure)
+#     radii = TOML.parsefile(params)["atoms"]["radius"] |> Dict{String, T}
+#     reduce(prot, 4) do atom
+#         if typeof(atom) == Atom
+#             Sphere{T}[Sphere(Point3(atom.coords) .|> T,
+#                 if atom.element in keys(radii)
+#                     radii[atom.element]
+#                 else
+#                     1.0
+#                 end)]
+#         else
+#             Sphere{T}[]
+#         end
+#     end |> StructVector
+# end
 end

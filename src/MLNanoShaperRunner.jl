@@ -16,6 +16,6 @@ using .Import
 
 export RegionMesh, RegularGrid, distance, signed_distance, trace, ModelInput, Batch, ConcatenatedBatch,
        get_element, ConcatenatedBatch,
-       AnnotedKDTree, select_neighboord, Partial, get_preprocessing, drop_preprocessing, get_last_chain_dim, get_last_chain,
+       RegularGrid, select_neighboord, Partial, get_preprocessing, drop_preprocessing, get_last_chain_dim, get_last_chain,
        PreprocessedData, SerializedModel, get_cutoff_radius, batched_sum, production_instantiate
 end # module MLNanoShaperRunner
