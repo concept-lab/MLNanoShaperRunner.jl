@@ -188,7 +188,8 @@ end
 
 function cut(cut_radius::T, r::T)::T where {T<:Number}
     k = r / cut_radius
-    ifelse(0 <= k <= 0.5, one(T), zero(T)) + ifelse(0.5 < k <= 1, 2 * (1 - k), zero(T))
+    threshold = T(.5)
+    ifelse(zero(T) <= k <= threshold, one(T), zero(T)) + ifelse(threshold < k <= one(T),(one(T) - k)/(one(T) - threshold), zero(T))
 end
 
 scale_factor(x) = @view x[end:end, :]

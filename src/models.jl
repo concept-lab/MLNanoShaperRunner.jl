@@ -98,20 +98,20 @@ function tiny_angular_dense(;
     general_angular_dense(
         Chain(
             # Lux.WrappedFunction(trace("input")),
-            Dense(6 => 7, relu),
+            Dense(6 => 8, relu),
             # Lux.WrappedFunction(trace("pre sum")),
-            Dense(7 => 4, relu),
+            Dense(8 => 16, relu),
         ),
         Chain(
             # Lux.WrappedFunction(trace("post sum")),
             relu6,
             # NoOpLayer(),
-            LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
-            Dense(4 + van_der_waals_channel => 6, relu),
+            # LayerNorm((16 + van_der_waals_channel,); dims=(1,)),
+            Dense(16 + van_der_waals_channel => 8, relu),
             # NoOpLayer(),
             # Lux.WrappedFunction(trace("pre norm")),
-            LayerNorm((6,); dims=(1,)),
-            Dense(6 => 1, sigmoid_fast),
+            # LayerNorm((8,); dims=(1,)),
+            Dense(8 => 1, sigmoid_fast),
         ),
         ;
         name="tiny_angular_dense" *
@@ -136,17 +136,17 @@ function tiny_soft_max_angular_dense(;
     general_angular_dense(
         Chain(
             # Lux.WrappedFunction(trace("input")),
-            Dense(6 => 7, relu),
+            Dense(6 => 8, relu),
             # Lux.WrappedFunction(trace("pre sum 1")),
-            Dense(7 => 4, x -> exp( 1f0*relu6(x)) -1f0),
+            Dense(8 => 16, x -> exp( 1f0*relu6(x)) -1f0),
         ),
         Chain(
             # Lux.WrappedFunction(trace("post sum")),
             Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x ->log(1f0 + x)*1f0)),
-            LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
-            Dense(4 + van_der_waals_channel => 6, relu),
-            LayerNorm((6,); dims=(1,)),
-            Dense(6 => 1, sigmoid_fast),
+            # LayerNorm((16 + van_der_waals_channel,); dims=(1,)),
+            Dense(16 + van_der_waals_channel => 8, relu),
+            # LayerNorm((6,); dims=(1,)),
+            Dense(8 => 1, sigmoid_fast),
         ),
         ;
         name="tiny_soft_max_angular_dense" *
@@ -203,7 +203,7 @@ function light_soft_max_angular_dense(;
     general_angular_dense(
         Chain(
             Dense(6 => 10, relu),
-            Dense(10 => 50, x -> exp( relu6(x)) -1f0),
+            Dense(10 => 50, x -> exp(relu6(x)) -1f0),
         ),
         Chain(
             Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x ->log(1f0 + x))),
