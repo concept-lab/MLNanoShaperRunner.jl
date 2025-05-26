@@ -107,11 +107,11 @@ function tiny_angular_dense(;
             relu6,
             # NoOpLayer(),
             # LayerNorm((16 + van_der_waals_channel,); dims=(1,)),
-            Dense(16 + van_der_waals_channel => 8, relu),
+            Dense(16 + van_der_waals_channel => 32, relu),
             # NoOpLayer(),
             # Lux.WrappedFunction(trace("pre norm")),
             # LayerNorm((8,); dims=(1,)),
-            Dense(8 => 1, sigmoid_fast),
+            Dense(32 => 1, sigmoid_fast),
         ),
         ;
         name="tiny_angular_dense" *
@@ -144,9 +144,9 @@ function tiny_soft_max_angular_dense(;
             # Lux.WrappedFunction(trace("post sum")),
             Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x ->log(1f0 + x)*1f0)),
             # LayerNorm((16 + van_der_waals_channel,); dims=(1,)),
-            Dense(16 + van_der_waals_channel => 8, relu),
+            Dense(16 + van_der_waals_channel => 32, relu),
             # LayerNorm((6,); dims=(1,)),
-            Dense(8 => 1, sigmoid_fast),
+            Dense(32 => 1, sigmoid_fast),
         ),
         ;
         name="tiny_soft_max_angular_dense" *

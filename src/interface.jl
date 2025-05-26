@@ -7,9 +7,9 @@ function evaluate_field(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=
     batch_size = 100000
     volume = similar(grid,Float32)
     v = reshape(volume,:)
-    @threads for i in 1:batch_size:length(volume)
+    for i in 1:batch_size:length(volume)
     	k = min(i+ batch_size-1,length(v))
-    	res =  reshape(model((Batch(view(g,i:k)), atoms)),:)
+    	res =  reshape(model((Batch(view(g,i:k)), atoms)) |> cpu_device(),:)
     	v[i:k] .= res
         end
 	volume
