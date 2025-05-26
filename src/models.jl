@@ -169,15 +169,13 @@ function light_angular_dense(;
     smoothing=true,
     kargs...)
     general_angular_dense(
-        Chain(Dense(6 => 10, relu), Dense(10 => 50, relu)),
+        Chain(Dense(6 => 16, relu), Dense(16=> 32, relu)),
         Chain(
-            # BatchNorm(50 + van_der_waals_channel),
-            # Base.Broadcast.BroadcastFunction(sqrt),
             relu6,
-            LayerNorm((50 + van_der_waals_channel,); dims=(1,)),
-            Dense(50 + van_der_waals_channel => 10, relu),
-            LayerNorm((10,); dims=(1,)),
-            Dense(10 => 1, sigmoid_fast)
+            # LayerNorm((50 + van_der_waals_channel,); dims=(1,)),
+            Dense(32+ van_der_waals_channel => 64, relu),
+            # LayerNorm((10,); dims=(1,)),
+            Dense(64=> 1, sigmoid_fast)
         ),
         ;
         name="light_angular_dense" *
@@ -202,15 +200,15 @@ function light_soft_max_angular_dense(;
     kargs...)
     general_angular_dense(
         Chain(
-            Dense(6 => 10, relu),
-            Dense(10 => 50, x -> exp(relu6(x)) -1f0),
+            Dense(6 => 16, relu),
+            Dense(16=> 32, x -> exp(relu6(x)) -1f0),
         ),
         Chain(
             Lux.WrappedFunction(Base.Broadcast.BroadcastFunction( x ->log(1f0 + x))),
             # LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
-            Dense(50 + van_der_waals_channel => 10, relu),
+            Dense(32+ van_der_waals_channel => 64, relu),
             # LayerNorm((6,); dims=(1,)),
-            Dense(10 => 1, sigmoid_fast),
+            Dense(64=> 1, sigmoid_fast),
         ),
         ;
         name="light_soft_max_angular_dense" *
