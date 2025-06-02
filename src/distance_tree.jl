@@ -42,7 +42,7 @@ const dx = @SVector [-1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0,
 const dy = @SVector [-1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1]
 const dz = @SVector [-1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1]
 
-function __inrange(f!::Function, g::RegularGrid{T}, p::Point3{T},dx::AbstractArray{Int},dy::AbstractArray{Int},dz::AbstractArray{Int}) where {T}
+function __inrange(f!::Function, g::RegularGrid{T}, p::Point3{T}) where {T}
     x, y, z = get_id(p, g.start, g.radius)
     r2 = g.radius^2
     for i in 1:27
@@ -60,7 +60,7 @@ function __inrange(f!::Function, g::RegularGrid{T}, p::Point3{T},dx::AbstractArr
 end
 function _inrange(::Type{G}, g::RegularGrid{T}, p::Point3{T})::G where {T,G}
     res = _summon_type(G)(undef, 0)
-    __inrange(x -> push!(res, x), g, p,dx,dy,dz)
+    __inrange(x -> push!(res, x), g, p)
     res
 end
 
