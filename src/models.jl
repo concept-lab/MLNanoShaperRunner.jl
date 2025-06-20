@@ -10,6 +10,7 @@ end
 const MyType{T<:Number} = StructVector{Sphere{T},@NamedTuple{center::Vector{Point{3,T}}, r::Vector{T}},Int64}
 
 function select_neighboord_batch(point::Batch, atoms::RegularGrid{T}) where {T}
+    # _inrange(StructVector{Sphere{T}},atoms,point) |> Batch
     neighboord = Batch(StructVector{Sphere{T}}[])
     for point in point.field
         push!(neighboord.field, select_neighboord(
@@ -33,10 +34,11 @@ end
 function select_and_preprocess(
     point::Batch,
     atoms::RegularGrid{T};
-    cutoff_radius::Number
+    cutoff_radius::Number,
+    device = identity
 ) where {T}
     neighboord = select_neighboord_batch(point, atoms)
-    preprocessing(point, neighboord; cutoff_radius)
+    preprocessing(device(point), neighboord; cutoff_radius)
 end
 
 @inline select_and_preprocess(

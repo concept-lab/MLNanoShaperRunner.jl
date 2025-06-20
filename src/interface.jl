@@ -1,40 +1,50 @@
-function evaluate_trivial(volume::AbstractArray{Float32,3},mins::Point3{Int},atoms::RegularGrid)
+function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::AbstractArray{Point3f,3},atoms::RegularGrid)
 	cutoff_radius = atoms.radius
-	unknow_indices = Point3{Int}[]
-	for (i,j,k)  in eachindex(IndexCartesian(),volume)
-		pos  = mins .+ cutoff_radius .* (i,j,k) |> Point3f
-		has_atom_nearby = false
-		__inrange(atoms,pos) do s::Sphere{Float32}
-			d = (s.pos .- pos ) .^2 |> sum
-			if d < cutoff_radius^2
-				volume[i,j,k] = 1f0
-			elseif d < (cutoff_radius + r)^2
-				has_atoms_nearby = true
+	local_unknow_indices = [Vector{Point3{Int}}() for _ in 1:Threads.nthreads()]
+    @threads for I in eachindex(IndexCartesian(), coordinates)
+    	thread_id = Threads.threadid()
+		i = Tuple(I)
+		pos = coordinates[I]
+		has_atoms_nearby = Ref(false)
+		volume[I] = 0f0
+		_iter_grid(atoms,pos,CartesianIndices((5,5,5)) .- CartesianIndex((2,2,2))) do s::Sphere{Float32}
+			d² = (s.center.- pos ) .^2 |> sum
+			if d² < s.r^2
+				volume[I] = 1f0
+			elseif d² < (cutoff_radius + s.r)^2
+				has_atoms_nearby[] = true
 			end
+			return
 		end
-		if !has_atoms_nearby
-			volume[i,j,k] = 0f0
-		end
-		if volume[i,j,k] not in (0f0,1f0)
-			push!(unknown_indices,Point3(i,j,k))
+		if has_atoms_nearby[]
+			@info "unknown indices" I
+			push!(local_unknow_indices[thread_id], Point3i(i...))
 		end
 	end
-	unknown_indices
+	unknow_indices = Point3{Int}[]
+	for thread_indices in local_unknow_indices
+        append!(unknow_indices, thread_indices)
+    end
+	unknow_indices
 end
-function evaluate_field_fast(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=1,batch_size = 100000)::Array{Float32,3}
+# function coordiates(r::RegularGrid,i)
+# 	r.start .+ r.radius .* i
+# end
+function evaluate_field_fast(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=1f0,batch_size = 100000)::Array{Float32,3}
 	mins = atoms.start .- 2
 	maxes = mins .+ size(atoms.grid) .* atoms.radius .+ 2
     ranges = range.(mins, maxes; step)
     grid = Point3f.(reshape(ranges[1], :, 1,1), reshape(ranges[2], 1, :,1), reshape(ranges[3], 1,1,:))
     volume = similar(grid,Float32)
-    unknown_indices = evaluate_trivial!(volume,mins,atoms)
+    unknown_indices = evaluate_trivial!(volume,grid,atoms)
+    return volume
     for i in 1:batch_size:length(unknown_indices)
-    	k = min(i+ batch_size-1,length(v))
+    	k = min(i+ batch_size-1,length(unknown_indices))
     	v=  view(unknown_indices,i:k)
-    	res =  reshape(model((Batch(mins .+ atoms.radius .* v), atoms)) |> cpu_device(),:)
-    	for ((i,j,k),r) in zip(v,res)
-	    	volume[i,j,k] = r 
-    	end
+    	# res =  reshape(model((Batch(map(v) do coordinates(atoms,v) end), atoms)) |> cpu_device(),:)
+    	# for ((i,j,k),r) in zip(v,res)
+	    	# volume[i,j,k] = r 
+    	# end
     end
 	volume
 end
