@@ -8,7 +8,7 @@ function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::Abstrac
 		has_atoms_nearby = Ref(false)
 		cutoff_radius² = cutoff_radius^2
 		volume[I] = 0f0
-		_iter_grid(atoms,pos,CartesianIndices((3,3,3)) .- CartesianIndex((1,1,1))) do s::Sphere{Float32}
+		_iter_grid(atoms,pos,Δ3) do s::Sphere{Float32}
 			d² = (s.center.- pos ) .^2 |> sum
 
 			if d² < s.r^2

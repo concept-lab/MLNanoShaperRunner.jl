@@ -40,7 +40,7 @@ end
 const dx = @SVector [-1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 const dy = @SVector [-1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1]
 const dz = @SVector [-1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1]
-const Δ3 = CartesianIndices((3,3,3)) .- CartesianIndex((1,1,1))
+const Δ3 = CartesianIndices((3,3,3)) .- CartesianIndex((2,2,2))
 function _iter_grid(f!::Function,g::RegularGrid{T},p::Point3{T},Δ::CartesianIndices{3}) where {T}
     x, y, z = get_id(p, g.start, g.radius)
     for d in Δ
@@ -59,6 +59,7 @@ end
 function __inrange(f!::Function, g::RegularGrid{T}, p::Point3{T}) where {T}
     r2 = g.radius^2
     _iter_grid(g,p,Δ3) do s
+        # @info "testing point" s p  sum((p .- g.center(s)) .^ 2)
         if sum((p .- g.center(s)) .^ 2) < r2
             f!(s)
         else
