@@ -49,7 +49,9 @@ function _iter_grid(f!::Function,g::RegularGrid{T},p::Point3{T},Δ::CartesianInd
         z1 = z + d[3]
         if x1 in axes(g.grid, 1) && y1 in axes(g.grid, 2) && z1 in axes(g.grid, 3)
             for s in g.grid[x1, y1, z1]
-                f!(s)
+                if f!(s)
+                    break
+                end
             end
         end
     end
@@ -59,12 +61,14 @@ function __inrange(f!::Function, g::RegularGrid{T}, p::Point3{T}) where {T}
     _iter_grid(g,p,Δ3) do s
         if sum((p .- g.center(s)) .^ 2) < r2
             f!(s)
+        else
+            false
         end
     end
 end
 function _inrange(::Type{G}, g::RegularGrid{T}, p::Point3{T})::G where {T,G}
     res = _summon_type(G)(undef, 0)
-    __inrange(x -> push!(res, x), g, p)
+    __inrange(x -> (push!(res, x);false), g, p)
     res
 end
 
@@ -91,7 +95,7 @@ function _inrange(::Type{G}, g::RegularGrid{T}, p::Batch{<:AbstractVector{Point3
     i = Ref(1)
     for j in 1:n
         i[] = 1
-        __inrange(x -> my_push!(res,i,j,x), g, p.field[j])
+        __inrange(x -> (my_push!(res,i,j,x);false), g, p.field[j])
         ret[j] =@view  res[1:i[],j]
     end
     ret
