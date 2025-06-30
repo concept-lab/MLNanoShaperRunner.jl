@@ -1,5 +1,5 @@
 using Lux
-
+activation(x)= max(zero(x), min(one(x),x))
 function select_and_preprocess((point, atoms); cutoff_radius)
     select_and_preprocess(point, atoms; cutoff_radius)
 end
@@ -113,7 +113,7 @@ function tiny_angular_dense(;
             # NoOpLayer(),
             # Lux.WrappedFunction(trace("pre norm")),
             # LayerNorm((8,); dims=(1,)),
-            Dense(32 => 1, sigmoid_fast),
+            Dense(32 => 1, activation),
         ),
         ;
         name="tiny_angular_dense" *
@@ -148,7 +148,7 @@ function tiny_soft_max_angular_dense(;
             # LayerNorm((16 + van_der_waals_channel,); dims=(1,)),
             Dense(16 + van_der_waals_channel => 32, relu),
             # LayerNorm((6,); dims=(1,)),
-            Dense(32 => 1, sigmoid_fast),
+            Dense(32 => 1, activation),
         ),
         ;
         name="tiny_soft_max_angular_dense" *
@@ -177,7 +177,7 @@ function light_angular_dense(;
             # LayerNorm((50 + van_der_waals_channel,); dims=(1,)),
             Dense(32+ van_der_waals_channel => 64, relu),
             # LayerNorm((10,); dims=(1,)),
-            Dense(64=> 1, sigmoid_fast)
+            Dense(64=> 1, activatactivation)
         ),
         ;
         name="light_angular_dense" *
@@ -210,7 +210,7 @@ function light_soft_max_angular_dense(;
             # LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(32+ van_der_waals_channel => 64, relu),
             # LayerNorm((6,); dims=(1,)),
-            Dense(64=> 1, sigmoid_fast),
+            Dense(64=> 1, activatactivation),
         ),
         ;
         name="light_soft_max_angular_dense" *
@@ -241,7 +241,7 @@ function medium_angular_dense(;
             LayerNorm((100 + van_der_waals_channel,); dims=(1,)),
             Dense(100 + van_der_waals_channel => 15, relu),
             LayerNorm((15,); dims=(1,)),
-            Dense(15 => 1, sigmoid_fast)
+            Dense(15 => 1, activatactivation)
         );
         name="medium_angular_dense" *
              (van_der_waals_channel ? "_v" : "") *
