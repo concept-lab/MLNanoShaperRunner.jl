@@ -14,7 +14,7 @@ using Static
 using StaticTools
 
 function terse end
-
+# @stable begin
 """
 	ModelInput
 
@@ -70,7 +70,7 @@ function (f::FixedSizeDeepSet)(
     reshape(sum(res; dims=ndims(res) - 1), size(res)[begin:end-2]..., :), st
 end
 
-function _preprocessing!(
+@inbounds function _preprocessing!(
     dot::AbstractVector{T},
     r_s::AbstractVector{T},
     r_d::AbstractVector{T},
@@ -106,7 +106,7 @@ function _preprocessing!(
     dot[i] = d
     coeff[i] = cut(cutoff_radius, d_1) * cut(cutoff_radius, d_2)
 end
-function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
+@stable function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
     (; r, center) = atoms
     _center = MallocArray{Point3{T}}(undef, length(atoms))
     distances = MallocArray{T}(undef, length(atoms))
@@ -131,10 +131,10 @@ function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructV
         free(_center)
     end
 end
-function nb_features(nb_atoms::T)::T where T<: Integer
+@stable function nb_features(nb_atoms::T)::T where T<: Integer
      (nb_atoms* (nb_atoms+ 1)) ÷ 2
 end
-function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
+@stable function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
     # @assert length(field) >= 1
     lengths = zeros(Int, length(field) + 1)
     for i in eachindex(field)
@@ -144,7 +144,7 @@ function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
     end
     lengths
 end
-function preprocessing(
+@stable function preprocessing(
     point::Batch{<:AbstractVector{Point3{T}}},
     atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}};
     cutoff_radius::T) where {T}
@@ -164,7 +164,7 @@ function preprocessing(
     ConcatenatedBatch(ret, lengths)
 end
 
-function preprocessing(
+@stable function preprocessing(
     point::Batch{<:AbstractVector{Point3{T}}},
     atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}},
     max_nb_atoms::Int;
@@ -245,3 +245,4 @@ end
 end
 
 ((; fun, layer)::FunctionalLayer)(arg, ps, st) = fun(layer, arg, ps, st)
+# end

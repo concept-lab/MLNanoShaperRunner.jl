@@ -10,7 +10,7 @@ end
 const MyType{T<:Number} = StructVector{Sphere{T},@NamedTuple{center::Vector{Point{3,T}}, r::Vector{T}},Int64}
 
 function select_neighboord_batch(point::Batch, atoms::RegularGrid{T}) where {T}
-    # _inrange(StructVector{Sphere{T}},atoms,point) |> Batch
+    return _inrange(StructArray{Sphere{T}},atoms,point) |> Batch
     neighboord = Batch(StructVector{Sphere{T}}[])
     for point in point.field
         push!(neighboord.field, select_neighboord(
