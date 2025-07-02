@@ -153,14 +153,17 @@ end
     length_tot = last(lengths)
     ret = Matrix{T}(undef, 6, length_tot)
     # Folds.foreach(eachindex(atoms.field)) do i
-    for i in eachindex(atoms.field)
+    @threads for i in eachindex(atoms.field)
+        if length(get_slice(lengths,i)) == 0
+            break
+        end
         preprocessing!(
             view(ret, :, get_slice(lengths, i)),
             point.field[i], atoms.field[i];
             cutoff_radius
         )
     end
-    @assert !(any(isnan.(ret)))
+    @assert !(any(isnan.(ret))) "nan values are $(findall(isnan, ret)), $(size(ret))"
     ConcatenatedBatch(ret, lengths)
 end
 

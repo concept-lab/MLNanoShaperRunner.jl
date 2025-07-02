@@ -177,7 +177,7 @@ function light_angular_dense(;
             # LayerNorm((50 + van_der_waals_channel,); dims=(1,)),
             Dense(32+ van_der_waals_channel => 64, relu),
             # LayerNorm((10,); dims=(1,)),
-            Dense(64=> 1, activatactivation)
+            Dense(64=> 1, activation)
         ),
         ;
         name="light_angular_dense" *
@@ -210,7 +210,7 @@ function light_soft_max_angular_dense(;
             # LayerNorm((4 + van_der_waals_channel,); dims=(1,)),
             Dense(32+ van_der_waals_channel => 64, relu),
             # LayerNorm((6,); dims=(1,)),
-            Dense(64=> 1, activatactivation),
+            Dense(64=> 1, activation),
         ),
         ;
         name="light_soft_max_angular_dense" *
@@ -241,7 +241,7 @@ function medium_angular_dense(;
             LayerNorm((100 + van_der_waals_channel,); dims=(1,)),
             Dense(100 + van_der_waals_channel => 15, relu),
             LayerNorm((15,); dims=(1,)),
-            Dense(15 => 1, activatactivation)
+            Dense(15 => 1, activation)
         );
         name="medium_angular_dense" *
              (van_der_waals_channel ? "_v" : "") *

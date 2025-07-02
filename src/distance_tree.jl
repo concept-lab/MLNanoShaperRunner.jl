@@ -91,7 +91,7 @@ function _inrange(::Type{G}, g::RegularGrid{T}, p::Batch{<:AbstractVector{Point3
     result_matrix = _summon_type(G)(undef, 128, n)
     end_indices = zeros(Int,n)
     i = Ref(0)
-    for j in 1:n
+    @threads for j in 1:n
         i[] = 0
         __inrange(x -> (my_push!(result_matrix,i,j,x);false), g, p.field[j])
         end_indices[j] = i[]

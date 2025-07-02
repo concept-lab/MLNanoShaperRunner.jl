@@ -56,8 +56,7 @@ function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::Abstrac
 			return false
 		end
 		if has_atoms_nearby[]
-			@assert volume[I] == 0f0 "got $(volume[I])"
-			# @info "unknown indices" I
+			# @assert volume[I] == 0f0 "got $(volume[I])"
 			push!(unknow_indices, I)
 			push!(unknow_pos, coordinates[I])
 		end
@@ -76,11 +75,11 @@ end
     	k = min(i+ batch_size-1,length(unknown_indices))
     	p=  view(unknown_pos,i:k) |> Batch
     	r = model((p, atoms))
-    	# res::Vector{Float32} = r |> cpu_device() |> vec
+    	res::Vector{Float32} = r |> cpu_device() |> vec
     	# @assert length(res) == length(v)
-    	# for (l,r) in zip(i:k,res)
-	    	# volume[unknown_indices[l]] = r 
-    	# end
+    	for (l,r) in zip(i:k,res)
+	    	volume[unknown_indices[l]] = r 
+    	end
     end
 	volume
 end
