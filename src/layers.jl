@@ -14,7 +14,6 @@ using Static
 using StaticTools
 
 function terse end
-# @stable begin
 """
 	ModelInput
 
@@ -106,7 +105,7 @@ end
     dot[i] = d
     coeff[i] = cut(cutoff_radius, d_1) * cut(cutoff_radius, d_2)
 end
-@stable function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
+function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructVector{Sphere{T}}; cutoff_radius::T) where {T}
     (; r, center) = atoms
     _center = MallocArray{Point3{T}}(undef, length(atoms))
     distances = MallocArray{T}(undef, length(atoms))
@@ -131,10 +130,10 @@ end
         free(_center)
     end
 end
-@stable function nb_features(nb_atoms::T)::T where T<: Integer
+function nb_features(nb_atoms::T)::T where T<: Integer
      (nb_atoms* (nb_atoms+ 1)) ÷ 2
 end
-@stable function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
+function get_batch_lengths(field::AbstractVector{<:AbstractVector})::Vector{Int}
     # @assert length(field) >= 1
     lengths = zeros(Int, length(field) + 1)
     for i in eachindex(field)
@@ -144,7 +143,7 @@ end
     end
     lengths
 end
-@stable function preprocessing(
+function preprocessing(
     point::Batch{<:AbstractVector{Point3{T}}},
     atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}};
     cutoff_radius::T) where {T}
@@ -167,7 +166,7 @@ end
     ConcatenatedBatch(ret, lengths)
 end
 
-@stable function preprocessing(
+function preprocessing(
     point::Batch{<:AbstractVector{Point3{T}}},
     atoms::Batch{<:Vector{<:StructVector{Sphere{T}}}},
     max_nb_atoms::Int;
@@ -248,4 +247,3 @@ end
 end
 
 ((; fun, layer)::FunctionalLayer)(arg, ps, st) = fun(layer, arg, ps, st)
-# end

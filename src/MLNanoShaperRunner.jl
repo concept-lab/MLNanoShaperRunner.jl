@@ -3,7 +3,6 @@ module MLNanoShaperRunner
 using Base.Threads
 using StaticArrays
 using Adapt
-using DispatchDoctor
 include("Import.jl")
 include("batchs.jl")
 include("distance_tree.jl")

@@ -19,7 +19,7 @@ center(x) = x.center
 _summon_type(::Type{G}) where {G<:AbstractArray} = G
 _summon_type(::Type{<:StructArray{T}}) where {T} = StructArray{T}
 
-@stable function RegularGrid(points::AbstractVector{G}, radius::T, center::Function=center) where {T,G}
+function RegularGrid(points::AbstractVector{G}, radius::T, center::Function=center) where {T,G}
     mins = Point3f(map(1:3) do k
         minimum(p -> p[k], center(points))
     end...)
@@ -41,7 +41,7 @@ const dx = @SVector [-1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0,
 const dy = @SVector [-1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1, -1, -1, -1, 0, 0, 0, 1, 1, 1]
 const dz = @SVector [-1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0, 1]
 const Δ3 = CartesianIndices((3,3,3)) .- CartesianIndex((2,2,2))
-@stable function _iter_grid(f!::Function,g::RegularGrid{T},p::Point3{T},Δ::CartesianIndices{3}) where {T}
+function _iter_grid(f!::Function,g::RegularGrid{T},p::Point3{T},Δ::CartesianIndices{3}) where {T}
     x, y, z = get_id(p, g.start, g.radius)
     for d in Δ
         x1 = x + d[1]

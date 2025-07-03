@@ -32,14 +32,17 @@ function count_point_types(coordinates::AbstractArray{Point3f,3},atoms::RegularG
 	end
 	(;known_counts = sum(local_known_counts),unknown_counts = sum(local_unknown_counts),outside_counts = sum(local_outside_counts))
 end
-function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::AbstractArray{Point3f,3},atoms::RegularGrid)::Tuple{Vector{CartesianIndex{3}},Vector{Point3f}}
+function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::AbstractArray{Point3f,3},atoms::RegularGrid)::Tuple{AbstractVector{CartesianIndex{3}},AbstractVector{Point3f}}
 	cutoff_radius = atoms.radius
 	cutoff_radius² = cutoff_radius^2
-	unknow_indices = Vector{CartesianIndex{3}}()
-	unknow_pos = Vector{Point3f}()
+	n = length(volume)
+	unknow_indices = Vector{CartesianIndex{3}}(undef,n)
+	unknow_pos = Vector{Point3f}(undef,n)
+
+	j = 0
 	has_atoms_nearby = Ref(false)
     for I in eachindex(IndexCartesian(), coordinates)
-		i = Tuple(I)
+    	continue
 		pos = coordinates[I]
 		has_atoms_nearby[] = false
 		volume[I] = 0f0
@@ -57,19 +60,21 @@ function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::Abstrac
 		end
 		if has_atoms_nearby[]
 			# @assert volume[I] == 0f0 "got $(volume[I])"
-			push!(unknow_indices, I)
-			push!(unknow_pos, coordinates[I])
+			j += 1
+			unknow_indices[j]= I
+			unknow_pos[j]  = pos
 		end
 	end
-	unknow_indices,unknow_pos
+	view(unknow_indices,1:j),view(unknow_pos,1:j)
 end
-@inbounds function evaluate_field_fast(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=1f0,batch_size = 100000)::Array{Float32,3}
+@inbounds function evaluate_field_fast(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=1f0,batch_size = 100000)#::Array{Float32,3}
 	mins = atoms.start .- 2
-	maxes = mins .+ size(atoms.grid) .* atoms.radius .+ 2
+	maxes = atoms.start .+ size(atoms.grid) .* atoms.radius .+ 2
     ranges = range.(mins, maxes; step)
     grid = Point3f.(reshape(ranges[1], :, 1,1), reshape(ranges[2], 1, :,1), reshape(ranges[3], 1,1,:))
     volume = similar(grid,Float32)
     unknown_indices,unknown_pos = evaluate_trivial!(volume,grid,atoms)
+    return volume
     # @info "comparing lengths" length(unknown_indices)/batch_size 
     for i in 1:batch_size:length(unknown_indices)
     	k = min(i+ batch_size-1,length(unknown_indices))
