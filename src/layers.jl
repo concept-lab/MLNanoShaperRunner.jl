@@ -152,7 +152,7 @@ function preprocessing(
     length_tot = last(lengths)
     ret = Matrix{T}(undef, 6, length_tot)
     # Folds.foreach(eachindex(atoms.field)) do i
-    @threads for i in eachindex(atoms.field)
+    for i in eachindex(atoms.field)
         if length(get_slice(lengths,i)) == 0
             break
         end

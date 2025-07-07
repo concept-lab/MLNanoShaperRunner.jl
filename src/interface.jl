@@ -36,50 +36,87 @@ function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::Abstrac
 	cutoff_radius = atoms.radius
 	cutoff_radius² = cutoff_radius^2
 	n = length(volume)
-	unknow_indices = Vector{CartesianIndex{3}}(undef,n)
-	unknow_pos = Vector{Point3f}(undef,n)
-
-	j = 0
-	has_atoms_nearby = Ref(false)
+	k = Threads.nthreads()
+	vec_unknow_indices = Matrix{CartesianIndex{3}}(undef,k,n ÷ k)
+	vec_unknow_pos = Matrix{Point3f}(undef,k,n ÷ k) 
+	id_last = zeros(Int,k)
+	has_atoms_nearby = falses(k)
     for I in eachindex(IndexCartesian(), coordinates)
-    	continue
 		pos = coordinates[I]
-		has_atoms_nearby[] = false
+    	continue
+    	k = Threads.threadid()
+		has_atoms_nearby[k] = false
 		volume[I] = 0f0
 		_iter_grid(atoms,pos,Δ3) do s::Sphere{Float32}
 			d² = (s.center.- pos ) .^2 |> sum
 			if d² < s.r^2
 				volume[I] = 1f0
-				has_atoms_nearby[] = false
+				has_atoms_nearby[k] = false
 				return true
 			elseif d² < cutoff_radius² && volume[I] == 0f0
 				# @assert volume[I] == 0f0 "got $(volume[I])"
-				has_atoms_nearby[] = true
+				has_atoms_nearby[k] = true
 			end
 			return false
 		end
-		if has_atoms_nearby[]
+		if has_atoms_nearby[k]
 			# @assert volume[I] == 0f0 "got $(volume[I])"
-			j += 1
-			unknow_indices[j]= I
-			unknow_pos[j]  = pos
+			id_last[k] += 1
+			vec_unknow_indices[k,id_last[k]]= I
+			vec_unknow_pos[k,id_last[k]]  = pos
 		end
 	end
-	view(unknow_indices,1:j),view(unknow_pos,1:j)
+	unknown_indices = CartesianIndex{3}[]
+	unknown_pos = Point3f[]
+	# for k in 1:Threads.nthreads()
+		# append!(unknown_indices,view(vec_unknow_indices[k],1:id_last[k]))
+		# append!(unknown_pos,view(vec_unknow_pos[k],1:id_last[k]))
+	# end
+	unknown_indices,unknown_pos
 end
-@inbounds function evaluate_field_fast(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=1f0,batch_size = 100000)#::Array{Float32,3}
-	mins = atoms.start .- 2
-	maxes = atoms.start .+ size(atoms.grid) .* atoms.radius .+ 2
+function iter_coordinates(mins::Point3f,sizes::NTuple{3,Int},step::Float32,coord::Point3f,radius::Float32)
+	search_min = max.(floor.(Int, coord .- radius ./ step .- mins .+ 1), 1) |> Tuple
+	search_max = min.(ceil.(Int, coord .+ radius ./ step .- mins .+ 1), sizes) |> Tuple
+	CartesianIndices{3,Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(range.(search_min, search_max))
+end
+function evaluate_trivial_fast!(volume::AbstractArray{Float32,3}, mins, step, atoms::AbstractVector{Sphere{Float32}})::AbstractVector{CartesianIndex{3}}
+   for (;center,r) in atoms
+   		r² = r^2
+   		R² = (r + 1.4f0)^2
+   		# cutoff_radius² = atoms.radius^2
+    	for I in iter_coordinates(mins,size(volume),step,center,r + 1.4f0) 
+			pos = mins .+ step .* (Tuple(I) .- 1)
+			d² = (center .- pos) .^ 2 |> sum
+			if d² < r²
+    			volume[I] = 1f0
+    		elseif d² < R² && volume[I] < 1f0
+    			volume[I] = .5f0
+    		end
+
+		end
+	end
+	unknown_indices = CartesianIndex{3}[]
+	for (i,v) in enumerate(volume)
+		if v == .5f0
+			push!(unknown_indices,i)
+		end
+	end
+	unknown_indices
+end
+@inbounds function evaluate_field_fast(model::StatefulLuxLayer, atoms::StructVector{Sphere{Float32}}; step::Number=1.0f0, batch_size=100000)#::Array{Float32,3}
+	_atoms = RegularGrid(atoms,get_cutoff_radius(model.model))
+	mins = _atoms.start .- 2
+	maxes = _atoms.start .+ size(_atoms.grid) .* _atoms.radius .+ 2
     ranges = range.(mins, maxes; step)
     grid = Point3f.(reshape(ranges[1], :, 1,1), reshape(ranges[2], 1, :,1), reshape(ranges[3], 1,1,:))
     volume = similar(grid,Float32)
-    unknown_indices,unknown_pos = evaluate_trivial!(volume,grid,atoms)
-    return volume
-    # @info "comparing lengths" length(unknown_indices)/batch_size 
+    unknown_indices= evaluate_trivial_fast!(volume,mins,step,atoms)
+    unknown_pos = map(unknown_indices) do i mins .+ (i .-1) .*step end
+    @info "comparing lengths" length(unknown_indices)/batch_size 
     for i in 1:batch_size:length(unknown_indices)
     	k = min(i+ batch_size-1,length(unknown_indices))
     	p=  view(unknown_pos,i:k) |> Batch
-    	r = model((p, atoms))
+    	r = model((p, _atoms))
     	res::Vector{Float32} = r |> cpu_device() |> vec
     	# @assert length(res) == length(v)
     	for (l,r) in zip(i:k,res)

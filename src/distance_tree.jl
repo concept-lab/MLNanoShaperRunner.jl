@@ -74,7 +74,7 @@ function _inrange(::Type{G}, g::RegularGrid{T}, p::Point3{T})::G where {T,G}
     res
 end
 
-function my_push!(x::AbstractMatrix{T},i::Ref{Int},j::Int, y::T) where {T}
+function my_push!(x::AbstractMatrix{T},i,j::Int, y::T) where {T}
     i[] += 1
     x[i[],j] = y
 end
@@ -90,11 +90,12 @@ function _inrange(::Type{G}, g::RegularGrid{T}, p::Batch{<:AbstractVector{Point3
     n = length(p.field)
     result_matrix = _summon_type(G)(undef, 128, n)
     end_indices = zeros(Int,n)
-    i = Ref(0)
+    i = zeros(Int,Threads.nthreads())
     @threads for j in 1:n
-        i[] = 0
-        __inrange(x -> (my_push!(result_matrix,i,j,x);false), g, p.field[j])
-        end_indices[j] = i[]
+        k = Threads.threadid()
+        i[k] = 0
+        __inrange(x -> (my_push!(result_matrix,view(i,k),j,x);false), g, p.field[j])
+        end_indices[j] = i[k]
     end
     [view(result_matrix,1:i,j) for (j,i) in enumerate(end_indices)]
 end
