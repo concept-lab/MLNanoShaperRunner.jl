@@ -43,7 +43,6 @@ function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::Abstrac
 	has_atoms_nearby = falses(k)
     for I in eachindex(IndexCartesian(), coordinates)
 		pos = coordinates[I]
-    	continue
     	k = Threads.threadid()
 		has_atoms_nearby[k] = false
 		volume[I] = 0f0
@@ -74,9 +73,15 @@ function evaluate_trivial!(volume::AbstractArray{Float32,3},coordinates::Abstrac
 	# end
 	unknown_indices,unknown_pos
 end
-function iter_coordinates(mins::Point3f,sizes::NTuple{3,Int},step::Float32,coord::Point3f,radius::Float32)
-	search_min = max.(floor.(Int, coord .- radius ./ step .- mins .+ 1), 1) |> Tuple
-	search_max = min.(ceil.(Int, coord .+ radius ./ step .- mins .+ 1), sizes) |> Tuple
+function coord_to_pos(mins,step,coord)
+	mins + step * (coord - 1)
+end
+function pos_to_coord(mins,step,pos)
+	(pos - mins) / step + 1
+end
+function iter_coordinates(mins::Point3f,sizes::NTuple{3,Int},step::Float32,pos::Point3f,radius::Float32)
+	search_min = max.(floor.(Int,pos_to_coord.(mins,step,pos .- radius)), 1) |> Tuple
+	search_max = min.(ceil.( Int,pos_to_coord.(mins,step,pos.+ radius)), sizes) |> Tuple
 	CartesianIndices{3,Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(range.(search_min, search_max))
 end
 function evaluate_trivial_fast!(volume::AbstractArray{Float32,3}, mins, step, atoms::AbstractVector{Sphere{Float32}})::AbstractVector{CartesianIndex{3}}
@@ -96,7 +101,7 @@ function evaluate_trivial_fast!(volume::AbstractArray{Float32,3}, mins, step, at
 		end
 	end
 	unknown_indices = CartesianIndex{3}[]
-	for (i,v) in enumerate(volume)
+	for (i,v) in pairs(IndexCartesian(),volume)
 		if v == .5f0
 			push!(unknown_indices,i)
 		end
@@ -111,8 +116,9 @@ end
     grid = Point3f.(reshape(ranges[1], :, 1,1), reshape(ranges[2], 1, :,1), reshape(ranges[3], 1,1,:))
     volume = similar(grid,Float32)
     unknown_indices= evaluate_trivial_fast!(volume,mins,step,atoms)
-    unknown_pos = map(unknown_indices) do i mins .+ (i .-1) .*step end
-    @info "comparing lengths" length(unknown_indices)/batch_size 
+    unknown_pos = map(unknown_indices) do i coord_to_pos.(mins,step,Tuple(i)) end
+    # @info "comparing lengths" length(unknown_indices)/batch_size 
+    return
     for i in 1:batch_size:length(unknown_indices)
     	k = min(i+ batch_size-1,length(unknown_indices))
     	p=  view(unknown_pos,i:k) |> Batch
