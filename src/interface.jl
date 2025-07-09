@@ -111,14 +111,13 @@ end
 @inbounds function evaluate_field_fast(model::StatefulLuxLayer, atoms::StructVector{Sphere{Float32}}; step::Number=1.0f0, batch_size=100000)#::Array{Float32,3}
 	_atoms = RegularGrid(atoms,get_cutoff_radius(model.model))
 	mins = _atoms.start .- 2
-	maxes = _atoms.start .+ size(_atoms.grid) .* _atoms.radius .+ 2
+	maxes = mins .+ size(_atoms.grid) .* _atoms.radius .+ 2
     ranges = range.(mins, maxes; step)
     grid = Point3f.(reshape(ranges[1], :, 1,1), reshape(ranges[2], 1, :,1), reshape(ranges[3], 1,1,:))
     volume = similar(grid,Float32)
     unknown_indices= evaluate_trivial_fast!(volume,mins,step,atoms)
-    unknown_pos = map(unknown_indices) do i coord_to_pos.(mins,step,Tuple(i)) end
+    unknown_pos::Vector{Point3f} = map(unknown_indices) do i coord_to_pos.(mins,step,Point3f(i[1],i[2],i[3])) end
     # @info "comparing lengths" length(unknown_indices)/batch_size 
-    return
     for i in 1:batch_size:length(unknown_indices)
     	k = min(i+ batch_size-1,length(unknown_indices))
     	p=  view(unknown_pos,i:k) |> Batch

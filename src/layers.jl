@@ -122,9 +122,12 @@ function preprocessing!(ret::AbstractMatrix{T}, point::Point3{T}, atoms::StructV
         for p1 in 1:length(atoms)
             for p2 in 1:p1
                 _preprocessing!(dot,r_s,r_d,d_s,d_d,coeff,r,_center,distances,p1,p2,i,0,cutoff_radius)
+                @assert !any(isnan.(ret[i]))
                 i += 1
             end
         end
+        # @assert length(dot) == i-1 "got length of $(length(dot)) instead of $(i -1)"
+        # @assert !(any(isnan.(ret))) "nan values are $(findall(isnan, ret)), $(size(ret))"
     finally
         free(distances)
         free(_center)
@@ -151,11 +154,12 @@ function preprocessing(
     # @assert all(lengths .==vcat([0],cumsum(atoms.field .|> size .|> last .|> last |>Map(x -> x * (x + 1) ÷ 2))))
     length_tot = last(lengths)
     ret = Matrix{T}(undef, 6, length_tot)
+    ret .= T(NaN)
     # Folds.foreach(eachindex(atoms.field)) do i
     for i in eachindex(atoms.field)
-        if length(get_slice(lengths,i)) == 0
-            break
-        end
+        # if length(get_slice(lengths,i)) == 0
+            # break
+        # end
         preprocessing!(
             view(ret, :, get_slice(lengths, i)),
             point.field[i], atoms.field[i];
