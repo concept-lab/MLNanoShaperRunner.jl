@@ -85,7 +85,7 @@ function iter_coordinates(mins::Point3f,sizes::NTuple{3,Int},step::Float32,pos::
 	CartesianIndices{3,Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(range.(search_min, search_max))
 end
 function evaluate_trivial_fast!(volume::AbstractArray{Float32,3}, mins, step, atoms::AbstractVector{Sphere{Float32}})::AbstractVector{CartesianIndex{3}}
-   for (;center,r) in atoms
+   @threads for (;center,r) in atoms
    		r² = r^2
    		R² = (r + 1.4f0)^2
    		# cutoff_radius² = atoms.radius^2
@@ -108,13 +108,13 @@ function evaluate_trivial_fast!(volume::AbstractArray{Float32,3}, mins, step, at
 	end
 	unknown_indices
 end
-@inbounds function evaluate_field_fast(model::StatefulLuxLayer, atoms::StructVector{Sphere{Float32}}; step::Number=1.0f0, batch_size=100000)#::Array{Float32,3}
+function evaluate_field_fast(model::StatefulLuxLayer, atoms::StructVector{Sphere{Float32}}; step::Number=1.0f0, batch_size=100000)#::Array{Float32,3}
 	_atoms = RegularGrid(atoms,get_cutoff_radius(model.model))
 	mins = _atoms.start .- 2
 	maxes = mins .+ size(_atoms.grid) .* _atoms.radius .+ 2
     ranges = range.(mins, maxes; step)
     grid = Point3f.(reshape(ranges[1], :, 1,1), reshape(ranges[2], 1, :,1), reshape(ranges[3], 1,1,:))
-    volume = similar(grid,Float32)
+    volume = zeros(Float32,size(grid))
     unknown_indices= evaluate_trivial_fast!(volume,mins,step,atoms)
     unknown_pos::Vector{Point3f} = map(unknown_indices) do i coord_to_pos.(mins,step,Point3f(i[1],i[2],i[3])) end
     # @info "comparing lengths" length(unknown_indices)/batch_size 
@@ -128,6 +128,7 @@ end
 	    	volume[unknown_indices[l]] = r 
     	end
     end
+	@assert !any(isnan.(volume))
 	volume
 end
 function evaluate_field(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=1,batch_size = 100000)::Array{Float32,3}
@@ -138,7 +139,7 @@ function evaluate_field(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=
     g = vec(grid)
     volume = similar(grid,Float32)
     v = reshape(volume,:)
-    @info "comparing lengths" length(volume)/batch_size 
+    # @info "comparing lengths" length(volume)/batch_size 
     for i in 1:batch_size:length(volume)
     	k = min(i+ batch_size-1,length(v))
     	res =  model((Batch(view(g,i:k)), atoms)) |> cpu_device() |> vec

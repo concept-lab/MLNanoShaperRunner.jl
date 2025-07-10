@@ -156,7 +156,7 @@ function preprocessing(
     ret = Matrix{T}(undef, 6, length_tot)
     ret .= T(NaN)
     # Folds.foreach(eachindex(atoms.field)) do i
-    for i in eachindex(atoms.field)
+    @threads for i in eachindex(atoms.field)
         # if length(get_slice(lengths,i)) == 0
             # break
         # end

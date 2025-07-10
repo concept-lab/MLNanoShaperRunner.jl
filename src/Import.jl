@@ -40,7 +40,7 @@ function parse_line(line::String, ::Type{Sphere{T}}) where {T}
     Sphere(Point3(x, y, z), r)
 end
 function Base.read(io::IO, T::Type{<:Union{XYZR, PQR}})
-    Folds.map(readlines(io)) do line
+    map(readlines(io)) do line
         parse_line(line, base_type(T))
     end
 end
