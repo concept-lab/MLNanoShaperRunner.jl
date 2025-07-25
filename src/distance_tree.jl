@@ -3,6 +3,11 @@ using LinearAlgebra
 using ChainRulesCore
 using Base.Iterators
 using StructArrays
+"""
+    struct RegularGrid{T<:Number,G,F<:Function}
+
+A structure representing the input of the surface prediction model
+"""
 struct RegularGrid{T<:Number,G,F<:Function}
     grid::Array{Vector{G},3}
     radius::T
@@ -19,20 +24,25 @@ center(x) = x.center
 _summon_type(::Type{G}) where {G<:AbstractArray} = G
 _summon_type(::Type{<:StructArray{T}}) where {T} = StructArray{T}
 
-function RegularGrid(points::AbstractVector{G}, radius::T, center::Function=center) where {T,G}
+"""
+   RegularGrid(spheres::AbstractVector,radius::Number,[center]) 
+A constructor that take a vector of spheres.
+If you are not using Geometry basic spheres, you will need to give a function center that return the center of each point.
+"""
+function RegularGrid(spheres::AbstractVector{G}, radius::T, center::Function=center) where {T,G}
     mins = Point3f(map(1:3) do k
-        minimum(p -> p[k], center(points))
+        minimum(p -> p[k], center(spheres))
     end...)
     maxes =Point3f(map(1:3) do k
-        maximum(p -> p[k], center(points))
+        maximum(p -> p[k], center(spheres))
     end...)
     x_m, y_m, z_m = get_id(maxes, mins, radius)
-    pos = map(center(points)) do point
+    pos = map(center(spheres)) do point
         get_id(point, mins, radius)
     end
     grid = [G[] for _ in 1:x_m, _ in 1:y_m, _ in 1:z_m]
-    for i in eachindex(points)
-        push!(grid[pos[i]...], points[i])
+    for i in eachindex(spheres)
+        push!(grid[pos[i]...], spheres[i])
     end
     RegularGrid(grid, radius, mins, center)
 end

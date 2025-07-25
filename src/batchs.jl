@@ -1,4 +1,8 @@
 using Transducers
+"""
+   Batch 
+A wrapper arround a vector to design a variable dimension
+"""
 struct Batch{T <: AbstractVector}
     field::T
 end
