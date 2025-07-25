@@ -88,7 +88,7 @@ end
     @test MLNanoShaperRunner.preprocessing(Batch(points[1:1]),Batch([atoms2]);cutoff_radius).field  ≈ MLNanoShaperRunner.preprocessing(Batch(cu(points[1:1])),Batch([atoms2]);cutoff_radius).field |> Array
 end
 @testset "evaluation" begin
-    model_file = "$(@__DIR__)/../examples/tiny_angular_dense_s_jobs_11_6_3_c_2025-03-10_epoch_800_10631177997949843226"
+    model_file = "$(@__DIR__)/../examples/tiny_angular_dense_s_final_training_10_3.0_categorical_6000_6331735514142882335"
     protein_file = "$(@__DIR__)/../examples/example_1.pqr"
     protein = RegularGrid(getfield.(read(protein_file, PQR{Float32}), :pos) |> StructVector,3f0)
     model = production_instantiate(deserialize(model_file))
