@@ -2,6 +2,7 @@ using Test, ChainRulesTestUtils, Zygote
 import FiniteDifferences
 using MLNanoShaperRunner, CUDA
 using MLNanoShaperRunner.Import: PQR
+using MLNanoShaperRunner: batched_sum 
 using StructArrays,Serialization,GeometryBasics
 using Lux
 
