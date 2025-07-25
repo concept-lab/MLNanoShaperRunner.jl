@@ -50,23 +50,25 @@ end
         jacobian(batched_sum, a,2, [0, 2])[1] ≈ FiniteDifferences.jacobian(
             FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a,2, [0, 2]), Float32.(a))[1]
     end
-    @test begin
-        jacobian(batched_sum, cu([1;; 2]), 2,[0, 2])[1] |> Array ≈
-        FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),
-            a -> batched_sum(a,2, [0, 2]), Float32.([1;; 2]))[1]
-    end
-    @test begin
-        jacobian(batched_sum, cu(a),2, [0, 2])[1] |> Array ≈ FiniteDifferences.jacobian(
-            FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a,2, [0, 2]), Float32.(a))[1]
-    end
-    @test begin
-        jacobian(batched_sum, cu([1;; 2]),1, [0, 1, 2])[1] |> Array ≈
-        FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),
-            a -> batched_sum(a,1, [0, 1, 2]), Float32.([1;; 2]))[1]
-    end
-    @test begin
-        jacobian(batched_sum, cu(a),2, [0, 2])[1] |> Array ≈ FiniteDifferences.jacobian(
-            FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a,2, [0, 2]), Float32.(a))[1]
+    if CUDA.functional()
+        @test begin
+            jacobian(batched_sum, cu([1;; 2]), 2,[0, 2])[1] |> Array ≈
+            FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),
+                a -> batched_sum(a,2, [0, 2]), Float32.([1;; 2]))[1]
+        end
+        @test begin
+            jacobian(batched_sum, cu(a),2, [0, 2])[1] |> Array ≈ FiniteDifferences.jacobian(
+                FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a,2, [0, 2]), Float32.(a))[1]
+        end
+        @test begin
+            jacobian(batched_sum, cu([1;; 2]),1, [0, 1, 2])[1] |> Array ≈
+            FiniteDifferences.jacobian(FiniteDifferences.central_fdm(5, 1),
+                a -> batched_sum(a,1, [0, 1, 2]), Float32.([1;; 2]))[1]
+        end
+        @test begin
+            jacobian(batched_sum, cu(a),2, [0, 2])[1] |> Array ≈ FiniteDifferences.jacobian(
+                FiniteDifferences.central_fdm(5, 1), a -> batched_sum(a,2, [0, 2]), Float32.(a))[1]
+        end
     end
 end
 function provide_start_model(model::Lux.StatefulLuxLayer,i::Integer)::StatefulLuxLayer
