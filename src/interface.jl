@@ -111,7 +111,7 @@ end
 function evaluate_field_fast(model::StatefulLuxLayer, atoms::StructVector{Sphere{Float32}}; step::Number=1.0f0, batch_size=100000)#::Array{Float32,3}
 	_atoms = RegularGrid(atoms,get_cutoff_radius(model.model))
 	mins = _atoms.start .- 2
-	maxes = mins .+ size(_atoms.grid) .* _atoms.radius .+ 2
+	maxes = _atoms.start .+ size(_atoms.grid) .* _atoms.radius .+ 2
     ranges = range.(mins, maxes; step)
     grid = Point3f.(reshape(ranges[1], :, 1,1), reshape(ranges[2], 1, :,1), reshape(ranges[3], 1,1,:))
     volume = zeros(Float32,size(grid))
@@ -133,7 +133,7 @@ function evaluate_field_fast(model::StatefulLuxLayer, atoms::StructVector{Sphere
 end
 function evaluate_field(model::StatefulLuxLayer,atoms::RegularGrid;step::Number=1,batch_size = 100000)::Array{Float32,3}
 	mins = atoms.start .- 2
-	maxes = mins .+ size(atoms.grid) .* atoms.radius .+ 2
+	maxes = (atoms.start .+ size(atoms.grid) .* atoms.radius) .+ 2
     ranges = range.(mins, maxes; step)
     grid = Point3f.(reshape(ranges[1], :, 1,1), reshape(ranges[2], 1, :,1), reshape(ranges[3], 1,1,:))
     g = vec(grid)
