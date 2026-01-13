@@ -36,5 +36,6 @@ MLUtilsExt = ["MLUtils"]
 
 [compat]
 BioSymbols = "5.2.0"
+LuxCore = "1"
 MLUtils = "0.4.8"
 StaticArrays = "1.9.13"
