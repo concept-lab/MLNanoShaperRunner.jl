@@ -38,3 +38,4 @@ MLUtilsExt = ["MLUtils"]
 BioSymbols = "5.2.0"
 MLUtils = "0.4.8"
 StaticArrays = "1.9.13"
+Statistics = "1"
